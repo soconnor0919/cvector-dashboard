@@ -421,7 +421,6 @@ function AssetTable({ data, draggable = false, onDragEnd }: {
   )
 }
 
-type Facility = { id: number; name: string }
 
 export function DataTable() {
   const { facilityId } = useFacility()
@@ -431,16 +430,10 @@ export function DataTable() {
     queryFn: () => fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
   })
 
-  const { data: facilities = [] } = useQuery<Facility[]>({
-    queryKey: ["facilities"],
-    queryFn: () => fetch("/api/facilities").then(r => r.json()),
-  })
-
   const [data, setData] = React.useState<Asset[]>([])
   const [search, setSearch] = React.useState("")
   const [filterStatus, setFilterStatus] = React.useState("all")
   const [filterType, setFilterType] = React.useState("all")
-  const [filterFacility, setFilterFacility] = React.useState("all")
 
   React.useEffect(() => {
     if (fetchedData) setData(fetchedData)
@@ -452,9 +445,8 @@ export function DataTable() {
     if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false
     if (filterStatus !== "all" && a.status !== filterStatus) return false
     if (filterType !== "all" && a.type !== filterType) return false
-    if (filterFacility !== "all" && String(a.facilityId) !== filterFacility) return false
     return true
-  }), [data, search, filterStatus, filterType, filterFacility])
+  }), [data, search, filterStatus, filterType])
 
   const dataIds = React.useMemo<UniqueIdentifier[]>(() => data.map(({ id }) => id), [data])
 
@@ -501,17 +493,6 @@ export function DataTable() {
             <SelectItem value="all">All types</SelectItem>
             {types.map(t => (
               <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterFacility} onValueChange={setFilterFacility}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Facility" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All facilities</SelectItem>
-            {facilities.map(f => (
-              <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
