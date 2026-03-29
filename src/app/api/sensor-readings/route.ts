@@ -11,46 +11,45 @@ function bucketExpr(hours: number) { // helper to determine appropriate bucketin
     return sql`date_trunc('hour', ${sensorReadings.timestamp})`; // 24 points
 }
 
-// /api/sensor-readings?metric=&hours=&facilityId=&assetId=
-export async function GET(
-    req: Request,
-) {
-    const { searchParams } = new URL(req.url);
-    const metric = searchParams.get("metric");
-    if (!metric) return NextResponse.json({ error: "metric is required" }, { status: 400 }); // metric is required
-    const hours = parseFloat(searchParams.get("hours") ?? "1");
-    const facilityId = searchParams.get("facilityId") ?? undefined;
-    const assetId = searchParams.get("assetId") ?? undefined;
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
-    const startTime = new Date(Date.now() - hours * 60 * 60 * 1000); // calculate start time based on hours parameter
+// /api/sensor-readings?hours=&facilityId=&assetId=
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const hours      = parseFloat(searchParams.get("hours") ?? "1");
+  const facilityId = searchParams.get("facilityId") ?? undefined;
+  const assetId    = searchParams.get("assetId")    ?? undefined;
+  const startTime  = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-    await maybeTickSimulation(); // ensure simulation is up to date before querying for metrics
+  await maybeTickSimulation();
 
-    const bucket = bucketExpr(hours); // determine bucketing expression based on hours parameter
+  const bucket = bucketExpr(hours);
 
-    // resolve facilityId to assetIds if provided, to allow filtering by facility or asset
-    let assetIds: number[] = [];
-    if (facilityId) {
-        const rows = await db.select({ id: assets.id }).from(assets)
-            .where(eq(assets.facilityId, parseInt(facilityId)));
-        assetIds = rows.map(r => r.id);
-    }
+  let assetIds: number[] = [];
+  if (facilityId) {
+    const rows = await db.select({ id: assets.id }).from(assets)
+      .where(eq(assets.facilityId, parseInt(facilityId)));
+    assetIds = rows.map(r => r.id);
+  }
 
-    const rows = await db
-        .select({
-            timestamp: bucket,
-            value: sql<number>`ROUND(AVG(${sensorReadings.value})::numeric, 2)`,
-        })
-        .from(sensorReadings)
-        .where(and(
-            eq(sensorReadings.metricName, metric),
-            // gte(sensorReadings.timestamp, twoHoursAgo),
-            gte(sensorReadings.timestamp, startTime),
-            facilityId ? inArray(sensorReadings.assetId, assetIds) : undefined, // optional
-            assetId ? eq(sensorReadings.assetId, parseInt(assetId)) : undefined, // optional
-        ))
-        .groupBy(bucket)
-        .orderBy(bucket);
+  const rows = await db
+    .select({
+      bucket:     bucket,
+      assetId:    assets.id,
+      assetName:  assets.name,
+      metricName: sensorReadings.metricName,
+      unit:       sensorReadings.unit,
+      avg:        sql<number>`ROUND(AVG(${sensorReadings.value})::numeric, 2)`,
+      min:        sql<number>`ROUND(MIN(${sensorReadings.value})::numeric, 2)`,
+      max:        sql<number>`ROUND(MAX(${sensorReadings.value})::numeric, 2)`,
+    })
+    .from(sensorReadings)
+    .innerJoin(assets, eq(sensorReadings.assetId, assets.id))
+    .where(and(
+      gte(sensorReadings.timestamp, startTime),
+      facilityId ? inArray(sensorReadings.assetId, assetIds) : undefined,
+      assetId    ? eq(sensorReadings.assetId, parseInt(assetId)) : undefined,
+    ))
+    .groupBy(bucket, assets.id, assets.name, sensorReadings.metricName, sensorReadings.unit)
+    .orderBy(bucket);
 
-    return NextResponse.json(rows);
+  return NextResponse.json(rows);
 }

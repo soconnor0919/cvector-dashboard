@@ -14,7 +14,7 @@ export async function GET(
 
     await maybeTickSimulation(); // ensure simulation is up to date before querying for metrics
 
-    const [metrics, assetStatuses, totalResult] = await Promise.all([
+    const [metrics, assetStatuses, assetTypes, totalResult] = await Promise.all([
         // metric averages from the last 2 hours
         db.select({
             metricName: sensorReadings.metricName,
@@ -36,15 +36,21 @@ export async function GET(
             .from(assets)
             .groupBy(assets.status)
             .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined),
-        // 3. Total asset count
+        // 3. Asset counts by type
+        db.select({ type: assets.type, count: count() })
+            .from(assets)
+            .groupBy(assets.type)
+            .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined),
+        // 4. Total asset count
         db.select({ count: count() })
             .from(assets)
             .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined),
     ]);
     // replace with empty response- will fire on fresh/empty db, and when no recent readings.
     return NextResponse.json({
-        metrics: metrics ?? [],
+        metrics:      metrics      ?? [],
         assetStatuses: assetStatuses ?? [],
-        totalResult: totalResult[0] ?? { count: 0 },
+        assetTypes:   assetTypes   ?? [],
+        totalResult:  totalResult[0] ?? { count: 0 },
     });
 }

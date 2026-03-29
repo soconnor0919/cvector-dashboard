@@ -32,18 +32,13 @@ export function SectionCards() {
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Total Assets</CardDescription>
-          {isLoading ? <Skeleton className="h-8 w-24" /> : (
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {totalAssets.toLocaleString()}
-            </CardTitle>
-          )}
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {isLoading ? <Skeleton className="h-8 w-20" /> : totalAssets.toLocaleString()}
+          </CardTitle>
           <CardAction>
-            {isLoading ? <Skeleton className="h-6 w-20" /> : (
-              <Badge variant="outline">
-                <BoxesIcon />
-                {totalAssets > 0 ? `${((online / totalAssets) * 100).toFixed(1)}% Online` : "No data"}
-              </Badge>
-            )}
+            <Badge variant="outline">
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><BoxesIcon />{totalAssets > 0 ? `${((online / totalAssets) * 100).toFixed(1)}% Online` : "No data"}</>}
+            </Badge>
           </CardAction>
         </CardHeader>
       </Card>
@@ -51,18 +46,13 @@ export function SectionCards() {
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Online</CardDescription>
-          {isLoading ? <Skeleton className="h-8 w-24" /> : (
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {online.toLocaleString()}
-            </CardTitle>
-          )}
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {isLoading ? <Skeleton className="h-8 w-20" /> : online.toLocaleString()}
+          </CardTitle>
           <CardAction>
-            {isLoading ? <Skeleton className="h-6 w-20" /> : (
-              <Badge variant="outline">
-                <CircleCheckIcon />
-                {totalAssets - online} offline
-              </Badge>
-            )}
+            <Badge variant="outline">
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><CircleCheckIcon />{totalAssets - online} offline</>}
+            </Badge>
           </CardAction>
         </CardHeader>
       </Card>
@@ -70,18 +60,13 @@ export function SectionCards() {
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Avg Power Draw</CardDescription>
-          {isLoading ? <Skeleton className="h-8 w-24" /> : (
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {avgPower} kW
-            </CardTitle>
-          )}
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {isLoading ? <Skeleton className="h-8 w-20" /> : `${avgPower} kW`}
+          </CardTitle>
           <CardAction>
-            {isLoading ? <Skeleton className="h-6 w-20" /> : (
-              <Badge variant="outline">
-                <ZapIcon />
-                Last 2 hours
-              </Badge>
-            )}
+            <Badge variant="outline">
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><ZapIcon />Last 2 hours</>}
+            </Badge>
           </CardAction>
         </CardHeader>
       </Card>
@@ -89,18 +74,13 @@ export function SectionCards() {
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Active Alerts</CardDescription>
-          {isLoading ? <Skeleton className="h-8 w-24" /> : (
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {alerts.toLocaleString()}
-            </CardTitle>
-          )}
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {isLoading ? <Skeleton className="h-8 w-20" /> : alerts.toLocaleString()}
+          </CardTitle>
           <CardAction>
-            {isLoading ? <Skeleton className="h-6 w-20" /> : (
-              <Badge variant={alerts > 0 ? "destructive" : "outline"}>
-                <AlertTriangleIcon />
-                {alerts > 0 ? "Needs attention" : "All clear"}
-              </Badge>
-            )}
+            <Badge variant={!isLoading && alerts > 0 ? "destructive" : "outline"}>
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><AlertTriangleIcon />{alerts > 0 ? "Needs attention" : "All clear"}</>}
+            </Badge>
           </CardAction>
         </CardHeader>
       </Card>
