@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Industrial Monitoring Dashboard
 
-## Getting Started
+A plant monitoring dashboard for industrial facilities. Displays real-time sensor data across assets — temperature, pressure, power, output, flow rate, and humidity — with automatic data refresh, time-series charts, and facility-level filtering.
 
-First, run the development server:
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Database**: PostgreSQL with Drizzle ORM
+- **UI**: shadcn/ui, Tailwind CSS, Recharts
+- **Runtime**: Bun
+
+## Prerequisites
+
+- [Bun](https://bun.sh) 1.0+
+- [Docker](https://www.docker.com) and Docker Compose
+
+## Local Development
+
+**1. Install dependencies**
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
+```
+
+**2. Start the database**
+
+```bash
+docker-compose up -d postgres
+```
+
+**3. Configure environment**
+
+Create a `.env.local` file in the project root:
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
+```
+
+**4. Run migrations and seed**
+
+```bash
+bun run db:migrate
+bun run db:seed
+```
+
+**5. Start the dev server**
+
+```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Docker (Full Stack)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To run the entire stack in Docker:
 
-## Learn More
+```bash
+docker-compose up --build
+```
 
-To learn more about Next.js, take a look at the following resources:
+This starts PostgreSQL, runs migrations, and serves the app at [http://localhost:3000](http://localhost:3000). No additional setup required.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data Simulation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The app uses a lazy simulation strategy: on each API request, if no sensor readings have been recorded in the past 30 seconds, a new batch of readings is generated for all assets. This keeps the dashboard live without a separate background process.
 
-## Deploy on Vercel
+To manually re-seed the database:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+bun run db:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Structure
+
+```
+src/
+  app/
+    api/               # REST API routes
+      assets/
+      facilities/
+      sensor-readings/
+      dashboard/summary/
+    page.tsx           # Dashboard root
+  components/          # UI components
+  server/
+    db/                # Drizzle schema, client, migrations
+    simulation.ts      # Lazy data generation
+scripts/
+  seed.ts              # Database seed script
+```
+
+## API Reference
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/facilities` | List all facilities |
+| `GET /api/assets?facilityId=` | List assets, optionally filtered by facility |
+| `GET /api/sensor-readings?hours=&facilityId=&assetId=` | Time-bucketed sensor readings with adaptive resolution |
+| `GET /api/dashboard/summary?facilityId=` | Aggregated metric averages, asset status counts |
