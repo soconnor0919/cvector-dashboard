@@ -1,19 +1,11 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { assets, facilities, sensorReadings } from "./schema";
+import { assets, facilities, sensorReadings } from "../src/server/db/schema";
+import { METRICS } from "../src/server/db/metrics";
 
 const client = postgres(process.env.DATABASE_URL!);
 const db = drizzle(client);
-
-export const METRICS = [
-    { name: "temperature", unit: "°C", base: 65, variance: 15 },
-    { name: "pressure", unit: "PSI", base: 120, variance: 25 },
-    { name: "power", unit: "kW", base: 450, variance: 100 },
-    { name: "output", unit: "units/hr", base: 180, variance: 30 },
-    { name: "flow_rate", unit: "L/min", base: 75, variance: 20 },
-    { name: "humidity", unit: "%", base: 45, variance: 10 },
-];
 
 const STATUSES = ["online", "offline", "warning", "error"];
 

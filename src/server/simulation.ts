@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { assets, facilities, sensorReadings } from "./db/schema";
 import { gte } from "drizzle-orm";
-import { METRICS } from "./db/seed";
+import { METRICS } from "./db/metrics";
 
 export async function maybeTickSimulation() {
   // 1. Check: any reading in the last 30 seconds?
