@@ -68,8 +68,8 @@ export function ChartStatusPie() {
                 dataKey="status"
                 stroke="none"
                 fontSize={12}
-                formatter={(value: string) =>
-                  `${statusConfig[value]?.label ?? value} (${chartData.find(d => d.status === value)?.count ?? 0})`
+                formatter={(value) =>
+                  `${statusConfig[value as string]?.label ?? value} (${chartData.find(d => d.status === value)?.count ?? 0})`
                 }
               />
             </Pie>
