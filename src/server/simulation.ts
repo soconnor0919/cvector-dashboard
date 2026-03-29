@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { assets, facilities, sensorReadings } from "./db/schema";
+import { assets, sensorReadings } from "./db/schema";
 import { gte } from "drizzle-orm";
 import { METRICS } from "./db/metrics";
 
