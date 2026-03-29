@@ -1,110 +1,108 @@
 "use client"
 
+import { useFacility } from "@/components/providers/facility-provider"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { TrendingUpIcon, TrendingDownIcon } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useQuery } from "@tanstack/react-query"
+import { AlertTriangleIcon, BoxesIcon, CircleCheckIcon, ZapIcon } from "lucide-react"
 
 export function SectionCards() {
+  const { facilityId } = useFacility()
+  const { data, isLoading } = useQuery({
+    queryKey: ["summary", facilityId],
+    queryFn: () => fetch(`/api/dashboard/summary${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
+  })
+
+  const totalAssets = Number(data?.totalResult?.count ?? 0)
+  const online = Number(data?.assetStatuses?.find((s: { status: string }) => s.status === "online")?.count ?? 0)
+  const avgPower = parseFloat(data?.metrics?.find((m: { metricName: string }) => m.metricName === "power")?.avgValue ?? "0").toFixed(1)
+  const alerts = data?.assetStatuses
+    ?.filter((s: { status: string }) => ["warning", "error"].includes(s.status))
+    .reduce((sum: number, s: { count: number }) => sum + Number(s.count), 0) ?? 0
+
   return (
     <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Total Revenue</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            $1,250.00
-          </CardTitle>
+          <CardDescription>Total Assets</CardDescription>
+          {isLoading ? <Skeleton className="h-8 w-24" /> : (
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {totalAssets.toLocaleString()}
+            </CardTitle>
+          )}
           <CardAction>
-            <Badge variant="outline">
-              <TrendingUpIcon
-              />
-              +12.5%
-            </Badge>
+            {isLoading ? <Skeleton className="h-6 w-20" /> : (
+              <Badge variant="outline">
+                <BoxesIcon />
+                {totalAssets > 0 ? `${((online / totalAssets) * 100).toFixed(1)}% Online` : "No data"}
+              </Badge>
+            )}
           </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Trending up this month{" "}
-            <TrendingUpIcon className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Visitors for the last 6 months
-          </div>
-        </CardFooter>
       </Card>
+
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>New Customers</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            1,234
-          </CardTitle>
+          <CardDescription>Online</CardDescription>
+          {isLoading ? <Skeleton className="h-8 w-24" /> : (
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {online.toLocaleString()}
+            </CardTitle>
+          )}
           <CardAction>
-            <Badge variant="outline">
-              <TrendingDownIcon
-              />
-              -20%
-            </Badge>
+            {isLoading ? <Skeleton className="h-6 w-20" /> : (
+              <Badge variant="outline">
+                <CircleCheckIcon />
+                {totalAssets - online} offline
+              </Badge>
+            )}
           </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Down 20% this period{" "}
-            <TrendingDownIcon className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Acquisition needs attention
-          </div>
-        </CardFooter>
       </Card>
+
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Active Accounts</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            45,678
-          </CardTitle>
+          <CardDescription>Avg Power Draw</CardDescription>
+          {isLoading ? <Skeleton className="h-8 w-24" /> : (
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {avgPower} kW
+            </CardTitle>
+          )}
           <CardAction>
-            <Badge variant="outline">
-              <TrendingUpIcon
-              />
-              +12.5%
-            </Badge>
+            {isLoading ? <Skeleton className="h-6 w-20" /> : (
+              <Badge variant="outline">
+                <ZapIcon />
+                Last 2 hours
+              </Badge>
+            )}
           </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Strong user retention{" "}
-            <TrendingUpIcon className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Engagement exceed targets</div>
-        </CardFooter>
       </Card>
+
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Growth Rate</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            4.5%
-          </CardTitle>
+          <CardDescription>Active Alerts</CardDescription>
+          {isLoading ? <Skeleton className="h-8 w-24" /> : (
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {alerts.toLocaleString()}
+            </CardTitle>
+          )}
           <CardAction>
-            <Badge variant="outline">
-              <TrendingUpIcon
-              />
-              +4.5%
-            </Badge>
+            {isLoading ? <Skeleton className="h-6 w-20" /> : (
+              <Badge variant={alerts > 0 ? "destructive" : "outline"}>
+                <AlertTriangleIcon />
+                {alerts > 0 ? "Needs attention" : "All clear"}
+              </Badge>
+            )}
           </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Steady performance increase{" "}
-            <TrendingUpIcon className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Meets growth projections</div>
-        </CardFooter>
       </Card>
     </div>
   )
