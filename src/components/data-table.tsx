@@ -73,23 +73,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import {
-  AlertTriangleIcon,
-  CircleCheckIcon,
-  CircleIcon,
   ChevronsLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsRightIcon,
   EllipsisVerticalIcon,
   GripVerticalIcon,
-  XCircleIcon,
+  SearchIcon,
 } from "lucide-react"
 
 type Asset = {
@@ -104,17 +96,14 @@ type Asset = {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const configs: Record<string, { icon: React.ElementType; className: string }> = {
-    online: { icon: CircleCheckIcon, className: "text-green-600 dark:text-green-400" },
-    warning: { icon: AlertTriangleIcon, className: "text-yellow-600 dark:text-yellow-400" },
-    error: { icon: XCircleIcon, className: "text-red-600 dark:text-red-400" },
-    offline: { icon: CircleIcon, className: "text-muted-foreground" },
+  const styles: Record<string, string> = {
+    online:  "border-transparent bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    warning: "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+    error:   "border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    offline: "border-transparent bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   }
-  const config = configs[status] ?? configs.offline
-  const Icon = config.icon
   return (
-    <Badge variant="outline" className="px-1.5 text-muted-foreground capitalize">
-      <Icon className={cn("size-3", config.className)} />
+    <Badge className={cn("capitalize", styles[status] ?? styles.offline)}>
       {status}
     </Badge>
   )
@@ -432,6 +421,8 @@ function AssetTable({ data, draggable = false, onDragEnd }: {
   )
 }
 
+type Facility = { id: number; name: string }
+
 export function DataTable() {
   const { facilityId } = useFacility()
 
@@ -440,14 +431,30 @@ export function DataTable() {
     queryFn: () => fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
   })
 
+  const { data: facilities = [] } = useQuery<Facility[]>({
+    queryKey: ["facilities"],
+    queryFn: () => fetch("/api/facilities").then(r => r.json()),
+  })
+
   const [data, setData] = React.useState<Asset[]>([])
+  const [search, setSearch] = React.useState("")
+  const [filterStatus, setFilterStatus] = React.useState("all")
+  const [filterType, setFilterType] = React.useState("all")
+  const [filterFacility, setFilterFacility] = React.useState("all")
 
   React.useEffect(() => {
     if (fetchedData) setData(fetchedData)
   }, [fetchedData])
-  
-  const onlineData = data.filter(a => a.status === "online")
-  const alertData = data.filter(a => ["warning", "error"].includes(a.status))
+
+  const types = React.useMemo(() => [...new Set(data.map(a => a.type))].sort(), [data])
+
+  const filtered = React.useMemo(() => data.filter(a => {
+    if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (filterStatus !== "all" && a.status !== filterStatus) return false
+    if (filterType !== "all" && a.type !== filterType) return false
+    if (filterFacility !== "all" && String(a.facilityId) !== filterFacility) return false
+    return true
+  }), [data, search, filterStatus, filterType, filterFacility])
 
   const dataIds = React.useMemo<UniqueIdentifier[]>(() => data.map(({ id }) => id), [data])
 
@@ -463,23 +470,55 @@ export function DataTable() {
   }
 
   return (
-    <Tabs defaultValue="all" className="w-full flex-col justify-start gap-6">
-      <div className="flex items-center px-4 lg:px-6">
-        <TabsList>
-          <TabsTrigger value="all">All Assets <Badge variant="secondary">{data.length}</Badge></TabsTrigger>
-          <TabsTrigger value="online">Online <Badge variant="secondary">{onlineData.length}</Badge></TabsTrigger>
-          <TabsTrigger value="alerts">Alerts <Badge variant="secondary">{alertData.length}</Badge></TabsTrigger>
-        </TabsList>
+    <div className="w-full flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2 px-4 lg:px-6">
+        <div className="relative flex-1 min-w-48">
+          <SearchIcon className="absolute left-2.5 inset-y-0 my-auto size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search assets..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="online">Online</SelectItem>
+            <SelectItem value="warning">Warning</SelectItem>
+            <SelectItem value="error">Error</SelectItem>
+            <SelectItem value="offline">Offline</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {types.map(t => (
+              <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterFacility} onValueChange={setFilterFacility}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Facility" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All facilities</SelectItem>
+            {facilities.map(f => (
+              <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      <TabsContent value="all" className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-        <AssetTable data={data} draggable onDragEnd={handleDragEnd} />
-      </TabsContent>
-      <TabsContent value="online" className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-        <AssetTable data={onlineData} />
-      </TabsContent>
-      <TabsContent value="alerts" className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-        <AssetTable data={alertData} />
-      </TabsContent>
-    </Tabs>
+      <div className="px-4 lg:px-6">
+        <AssetTable data={filtered} draggable onDragEnd={handleDragEnd} />
+      </div>
+    </div>
   )
 }
