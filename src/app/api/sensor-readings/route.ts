@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { assets, sensorReadings } from "@/server/db/schema";
-import { eq, avg, inArray, gte, and, count, sql } from "drizzle-orm";
 import { maybeTickSimulation } from "@/server/simulation";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 function bucketExpr(hours: number) { // helper to determine appropriate bucketing interval based on time range.
     if (hours <= 1) return sql`date_bin('5 minutes', ${sensorReadings.timestamp}, TIMESTAMPTZ '2000-01-01')`; // ~12 points
@@ -26,8 +26,6 @@ export async function GET(
 
     const bucket = bucketExpr(hours); // determine bucketing expression based on hours parameter
 
-    const startTime = new Date(Date.now() - hours * 60 * 60 * 1000); // calculate start time based on hours parameter
-
     // resolve facilityId to assetIds if provided, to allow filtering by facility or asset
     let assetIds: number[] = [];
     if (facilityId) {
@@ -44,7 +42,7 @@ export async function GET(
         .from(sensorReadings)
         .where(and(
             eq(sensorReadings.metricName, metric),
-            gte(sensorReadings.timestamp, startTime),
+            gte(sensorReadings.timestamp, twoHoursAgo),
             facilityId ? inArray(sensorReadings.assetId, assetIds) : undefined, // optional
             assetId ? eq(sensorReadings.assetId, parseInt(assetId)) : undefined, // optional
         ))

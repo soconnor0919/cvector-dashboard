@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, pgTable, text, timestamp, integer, real, varchar } from "drizzle-orm/pg-core";
+import { index, pgTable } from "drizzle-orm/pg-core";
 
 // Facilities
 export const facilities = pgTable("facility", (d) => ({
