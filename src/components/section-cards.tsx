@@ -37,7 +37,7 @@ export function SectionCards() {
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
-              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><BoxesIcon />{totalAssets > 0 ? `${((online / totalAssets) * 100).toFixed(1)}% Online` : "No data"}</>}
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><BoxesIcon aria-hidden="true" />{totalAssets > 0 ? `${((online / totalAssets) * 100).toFixed(1)}% Online` : "No data"}</>}
             </Badge>
           </CardAction>
         </CardHeader>
@@ -51,7 +51,7 @@ export function SectionCards() {
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
-              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><CircleCheckIcon />{totalAssets - online} offline</>}
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><CircleCheckIcon aria-hidden="true" />{totalAssets - online} offline</>}
             </Badge>
           </CardAction>
         </CardHeader>
@@ -65,7 +65,7 @@ export function SectionCards() {
           </CardTitle>
           <CardAction>
             <Badge variant="outline">
-              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><ZapIcon />Last 2 hours</>}
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><ZapIcon aria-hidden="true" />Last 2 hours</>}
             </Badge>
           </CardAction>
         </CardHeader>
@@ -79,7 +79,7 @@ export function SectionCards() {
           </CardTitle>
           <CardAction>
             <Badge variant={!isLoading && alerts > 0 ? "destructive" : "outline"}>
-              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><AlertTriangleIcon />{alerts > 0 ? "Needs attention" : "All clear"}</>}
+              {isLoading ? <Skeleton className="h-3.5 w-16" /> : <><AlertTriangleIcon aria-hidden="true" />{alerts > 0 ? "Needs attention" : "All clear"}</>}
             </Badge>
           </CardAction>
         </CardHeader>

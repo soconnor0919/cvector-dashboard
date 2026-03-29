@@ -169,7 +169,7 @@ export function ChartAreaInteractive() {
         </CardDescription>
         <CardAction className="flex flex-wrap gap-2">
           <Select value={metric} onValueChange={setMetric}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-36" aria-label="Select metric">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -179,7 +179,7 @@ export function ChartAreaInteractive() {
             </SelectContent>
           </Select>
           <Select value={filterAssetId} onValueChange={setFilterAssetId}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40" aria-label="Filter by asset">
               <SelectValue placeholder="All assets" />
             </SelectTrigger>
             <SelectContent>
@@ -194,6 +194,7 @@ export function ChartAreaInteractive() {
             value={hours}
             onValueChange={(v) => v && setHours(v)}
             variant="outline"
+            aria-label="Select time range"
             className="hidden *:data-[slot=toggle-group-item]:px-4! @[767px]/card:flex"
           >
             <ToggleGroupItem value="0.25">15m</ToggleGroupItem>
@@ -202,7 +203,7 @@ export function ChartAreaInteractive() {
             <ToggleGroupItem value="24">24h</ToggleGroupItem>
           </ToggleGroup>
           <Select value={hours} onValueChange={setHours}>
-            <SelectTrigger className="w-20 @[767px]/card:hidden">
+            <SelectTrigger className="w-20 @[767px]/card:hidden" aria-label="Select time range">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +223,7 @@ export function ChartAreaInteractive() {
         ) : (
         <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
           <AreaChart data={data}>
-            <defs>
+            <defs aria-hidden="true">
               {visibleAssets.map((asset, i) => (
                 <linearGradient key={asset.id} id={`fill-a${asset.id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  style={{ stopColor: `var(--color-a${asset.id})`, stopOpacity: 0.3 }} />

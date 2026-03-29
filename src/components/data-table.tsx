@@ -465,8 +465,9 @@ export function DataTable() {
     <div className="w-full flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2 px-4 lg:px-6">
         <div className="relative flex-1 min-w-48">
-          <SearchIcon className="absolute left-2.5 inset-y-0 my-auto size-4 text-muted-foreground" />
+          <SearchIcon aria-hidden="true" className="absolute left-2.5 inset-y-0 my-auto size-4 text-muted-foreground" />
           <Input
+            aria-label="Search assets"
             placeholder="Search assets..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -474,7 +475,7 @@ export function DataTable() {
           />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-32" aria-label="Filter by status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -486,7 +487,7 @@ export function DataTable() {
           </SelectContent>
         </Select>
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-32" aria-label="Filter by type">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
