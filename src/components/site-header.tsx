@@ -6,6 +6,7 @@ import { MoonIcon, SunIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { FacilitySelector } from "@/components/facility-selector"
 
 export function SiteHeader() {
   const { theme, setTheme } = useTheme()
@@ -19,7 +20,8 @@ export function SiteHeader() {
           className="mx-2 data-[orientation=vertical]:h-4"
         />
         <h1 className="text-base font-medium">Dashboard</h1>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <FacilitySelector />
           <Button
             variant="ghost"
             size="icon"
