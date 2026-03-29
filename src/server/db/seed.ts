@@ -6,7 +6,7 @@ import { assets, facilities, sensorReadings } from "./schema";
 const client = postgres(process.env.DATABASE_URL!);
 const db = drizzle(client);
 
-const METRICS = [
+export const METRICS = [
     { name: "temperature", unit: "°C", base: 65, variance: 15 },
     { name: "pressure", unit: "PSI", base: 120, variance: 25 },
     { name: "power", unit: "kW", base: 450, variance: 100 },
