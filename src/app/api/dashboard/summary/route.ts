@@ -1,7 +1,7 @@
 import { db } from "@/server/db";
 import { assets, sensorReadings } from "@/server/db/schema";
 import { kickSimulation } from "@/server/simulation";
-import { and, avg, count, eq, gte, max } from "drizzle-orm";
+import { and, avg, count, desc, eq, gte, sql, sum } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 // /api/dashboard/summary?facilityId=???
@@ -10,24 +10,37 @@ export async function GET(
 ) {
     const { searchParams } = new URL(req.url);
     const facilityId = searchParams.get("facilityId") ?? undefined;
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
 
     kickSimulation();
 
+    // 1. Get the latest reading for each asset using a window function
+    const readingsWithRn = db.select({
+        metricName: sensorReadings.metricName,
+        value: sensorReadings.value,
+        unit: sensorReadings.unit,
+        rn: sql<number>`row_number() over (partition by ${sensorReadings.assetId} order by ${sensorReadings.timestamp} desc)`.as("rn")
+    }).from(sensorReadings)
+        .innerJoin(assets, eq(sensorReadings.assetId, assets.id))
+        .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined)
+        .as("readings_with_rn");
+
+    const latestReadings = db.select({
+        metricName: readingsWithRn.metricName,
+        value: readingsWithRn.value,
+        unit: readingsWithRn.unit,
+    }).from(readingsWithRn)
+        .where(eq(readingsWithRn.rn, 1))
+        .as("latest_readings");
+
     const [metrics, assetStatuses, assetTypes, totalResult] = await Promise.all([
-        // metric averages from the last 2 hours
+        // current plant status: latest values for each metric, aggregated
         db.select({
-            metricName: sensorReadings.metricName,
-            avgValue: avg(sensorReadings.value),
-            latestValue: max(sensorReadings.value),
-            unit: sensorReadings.unit,
-        }).from(sensorReadings)
-            .innerJoin(assets, eq(sensorReadings.assetId, assets.id))
-            .where(and(
-                gte(sensorReadings.timestamp, twoHoursAgo),
-                (facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined)
-            ))
-            .groupBy(sensorReadings.metricName, sensorReadings.unit),
+            metricName: latestReadings.metricName,
+            totalValue: sum(latestReadings.value),
+            avgValue: avg(latestReadings.value),
+            unit: latestReadings.unit,
+        }).from(latestReadings)
+            .groupBy(latestReadings.metricName, latestReadings.unit),
         // 2. Asset counts by status
         db.select({
             status: assets.status,

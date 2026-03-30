@@ -8,11 +8,8 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }, // next.js 15: params is now a promise. must be awaited
 ) {
     const { id } = await params;
-    const row = await db.select().from(assets)
-        .where(eq(assets.facilityId, parseInt(id)))
-        .limit(1);
-    if (!row[0]) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    return NextResponse.json(row[0]);
+    const rows = await db.select().from(assets)
+        .where(eq(assets.facilityId, parseInt(id)));
+    
+    return NextResponse.json(rows);
 }

@@ -23,8 +23,5 @@ export async function GET(
         .from(assets)
         .innerJoin(facilities, eq(assets.facilityId, facilities.id))
         .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined); // if facilityId is provided, filter by it. if not, return all assets with their facility info
-    if (!rows[0]) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
     return NextResponse.json(rows);
 }
