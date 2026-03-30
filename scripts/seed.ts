@@ -101,7 +101,8 @@ async function seed() {
                     continue;
                 }
 
-                const value = Math.max(0, metric.base + variation + trend); // ensure value is non-negative
+                let value = Math.max(0, metric.base + variation + trend); // ensure value is non-negative
+                if (metric.name === "humidity") value = Math.min(100, value); // cap humidity at 100%
 
                 readings.push({
                     assetId: asset.id,

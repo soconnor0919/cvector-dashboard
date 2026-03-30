@@ -25,10 +25,13 @@ async function runSimulation() {
 
     return relevantMetrics.map(metric => {
       const variation = (Math.random() - 0.5) * 2 * metric.variance;
+      let value = Math.max(0, metric.base + variation);
+      if (metric.name === "humidity") value = Math.min(100, value);
+
       return {
         assetId: asset.id,
         metricName: metric.name,
-        value: Math.round(Math.max(0, metric.base + variation) * 100) / 100,
+        value: Math.round(value * 100) / 100,
         unit: metric.unit,
         timestamp: now,
       };
