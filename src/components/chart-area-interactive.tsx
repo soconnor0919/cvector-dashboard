@@ -5,6 +5,8 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useFacility } from "@/components/providers/facility-provider"
+import { toLabel } from "@/lib/utils"
+import { queryKeys } from "@/lib/query-keys"
 import {
   Card,
   CardAction,
@@ -30,9 +32,6 @@ import {
 } from "@/components/ui/toggle-group"
 import { METRICS } from "@/server/db/metrics"
 
-function toLabel(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1).replace("_", " ")
-}
 
 type Reading = {
   bucket: string
@@ -91,7 +90,7 @@ export function ChartAreaInteractive() {
   if (facilityId) params.set("facilityId", facilityId)
 
   const { data: raw = [] } = useQuery<Reading[]>({
-    queryKey: ["sensor-readings", hours, facilityId],
+    queryKey: queryKeys.sensorReadings(hours, facilityId),
     queryFn: () => fetch(`/api/sensor-readings?${params}`).then(r => r.json()),
   })
 

@@ -9,17 +9,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useFacility } from "@/components/providers/facility-provider"
-
-type Facility = {
-  id: number
-  name: string
-}
+import { queryKeys } from "@/lib/query-keys"
+import { type Facility } from "@/types"
 
 export function FacilitySelector() {
   const { facilityId, setFacilityId } = useFacility()
 
   const { data: facilities = [] } = useQuery<Facility[]>({
-    queryKey: ["facilities"],
+    queryKey: queryKeys.facilities(),
     queryFn: () => fetch("/api/facilities").then((r) => r.json()),
     staleTime: Infinity,
   })

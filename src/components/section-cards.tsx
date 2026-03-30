@@ -1,6 +1,8 @@
 "use client"
 
 import { useFacility } from "@/components/providers/facility-provider"
+import { queryKeys } from "@/lib/query-keys"
+import { statusClasses } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -23,13 +25,13 @@ function Shimmer({ className }: { className?: string }) {
 function onlineBadgeClass(pct: number) {
   if (pct >= 100) return "border-transparent bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
   if (pct > 80)   return "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-  return "border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+  return statusClasses.error
 }
 
 export function SectionCards() {
   const { facilityId } = useFacility()
   const { data, isLoading } = useQuery({
-    queryKey: ["summary", facilityId],
+    queryKey: queryKeys.summary(facilityId),
     queryFn: () => fetch(`/api/dashboard/summary${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
   })
 
@@ -92,7 +94,7 @@ export function SectionCards() {
             {isLoading ? <Shimmer className="w-16" /> : alerts.toLocaleString()}
           </CardTitle>
           <CardAction>
-            <Badge variant="outline" className={cn(!isLoading && alerts > 0 && "border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400")}>
+            <Badge variant="outline" className={cn(!isLoading && alerts > 0 && statusClasses.error)}>
               {isLoading ? <Shimmer className="w-20" /> : alerts > 0 ? "Needs attention" : "All clear"}
             </Badge>
           </CardAction>

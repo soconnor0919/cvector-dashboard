@@ -4,12 +4,17 @@ import { useQuery } from "@tanstack/react-query"
 import { BellIcon } from "lucide-react"
 import { useFacility } from "@/components/providers/facility-provider"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { queryKeys } from "@/lib/query-keys"
+import { toLabel } from "@/lib/utils"
+import { type Asset } from "@/types"
+import { StatusBadge, statusClasses } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
   DrawerClose,
   DrawerContent,
+  DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
@@ -18,40 +23,12 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
-type Asset = {
-  id: number
-  name: string
-  type: string
-  status: string
-  facilityName: string
-  facilityLocation: string | null
-  description: string | null
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    online:  "border-transparent bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-    warning: "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-    error:   "border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-    offline: "border-transparent bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  }
-  return (
-    <Badge className={cn("capitalize", styles[status] ?? styles.offline)}>
-      {status}
-    </Badge>
-  )
-}
-
-function toLabel(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1).replace("_", " ")
-}
-
 export function NotificationsSheet() {
   const { facilityId } = useFacility()
   const isMobile = useIsMobile()
 
   const { data: assets = [] } = useQuery<Asset[]>({
-    queryKey: ["assets", facilityId],
+    queryKey: queryKeys.assets(facilityId),
     queryFn: () =>
       fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`)
         .then(r => r.json())
@@ -84,11 +61,12 @@ export function NotificationsSheet() {
           <DrawerTitle className="flex items-center justify-between">
             <span>Issues</span>
             {count > 0 && (
-              <Badge className="border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+              <Badge className={statusClasses.error}>
                 {count} active
               </Badge>
             )}
           </DrawerTitle>
+          <DrawerDescription className="sr-only">Assets currently in error or warning state</DrawerDescription>
         </DrawerHeader>
 
         {count === 0 ? (

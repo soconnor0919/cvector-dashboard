@@ -3,6 +3,7 @@
 import { LabelList, Pie, PieChart } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 import { useFacility } from "@/components/providers/facility-provider"
+import { queryKeys } from "@/lib/query-keys"
 import {
   Card,
   CardContent,
@@ -39,7 +40,7 @@ export function ChartStatusPie() {
   if (facilityId) params.set("facilityId", facilityId)
 
   const { data } = useQuery({
-    queryKey: ["summary", facilityId],
+    queryKey: queryKeys.summary(facilityId),
     queryFn: () => fetch(`/api/dashboard/summary?${params}`).then(r => r.json()),
   })
 
