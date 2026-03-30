@@ -2,25 +2,6 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -37,6 +18,9 @@ import { useQuery } from "@tanstack/react-query"
 import { useFacility } from "@/components/providers/facility-provider"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
+import { queryKeys } from "@/lib/query-keys"
+import { StatusBadge } from "@/components/status-badge"
+import { type Asset } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -44,6 +28,7 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
+  DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
@@ -80,71 +65,9 @@ import {
   ChevronRightIcon,
   ChevronsRightIcon,
   EllipsisVerticalIcon,
-  GripVerticalIcon,
   SearchIcon,
 } from "lucide-react"
 
-type Asset = {
-  id: number
-  name: string
-  type: string
-  status: string
-  description: string | null
-  facilityId: number
-  facilityName: string
-  facilityLocation: string | null
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    online:  "border-transparent bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-    warning: "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-    error:   "border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-    offline: "border-transparent bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  }
-  return (
-    <Badge className={cn("capitalize", styles[status] ?? styles.offline)}>
-      {status}
-    </Badge>
-  )
-}
-
-function DragHandle({ id }: { id: number }) {
-  const { attributes, listeners } = useSortable({ id })
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="size-7 text-muted-foreground hover:bg-transparent"
-    >
-      <GripVerticalIcon className="size-3 text-muted-foreground" />
-      <span className="sr-only">Drag to reorder</span>
-    </Button>
-  )
-}
-
-function DraggableRow({ row }: { row: Row<Asset> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original.id,
-  })
-  return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-    >
-      {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </TableCell>
-      ))}
-    </TableRow>
-  )
-}
 
 function AssetDrawer({ asset }: { asset: Asset }) {
   const isMobile = useIsMobile()
@@ -158,6 +81,7 @@ function AssetDrawer({ asset }: { asset: Asset }) {
       <DrawerContent>
         <DrawerHeader className="gap-1">
           <DrawerTitle>{asset.name}</DrawerTitle>
+          <DrawerDescription className="sr-only">Asset details and recent sensor readings</DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col gap-4 px-4 text-sm">
           <Separator />
@@ -200,11 +124,6 @@ function AssetDrawer({ asset }: { asset: Asset }) {
 }
 
 const columns: ColumnDef<Asset>[] = [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
-  },
   {
     id: "select",
     header: ({ table }) => (
@@ -279,27 +198,12 @@ const columns: ColumnDef<Asset>[] = [
   },
 ]
 
-function AssetTable({ data, draggable = false, onDragEnd }: {
-  data: Asset[]
-  draggable?: boolean
-  onDragEnd?: (event: DragEndEvent) => void
-}) {
+function AssetTable({ data }: { data: Asset[] }) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data.map(({ id }) => id),
-    [data]
-  )
 
   const table = useReactTable({
     data,
@@ -318,57 +222,41 @@ function AssetTable({ data, draggable = false, onDragEnd }: {
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const tableBody = draggable ? (
-    <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
-      {table.getRowModel().rows.map((row) => (
-        <DraggableRow key={row.id} row={row} />
-      ))}
-    </SortableContext>
-  ) : (
-    table.getRowModel().rows.map((row) => (
-      <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-        {row.getVisibleCells().map((cell) => (
-          <TableCell key={cell.id}>
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-          </TableCell>
-        ))}
-      </TableRow>
-    ))
-  )
-
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-lg border">
-        <DndContext
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={onDragEnd ?? (() => { })}
-          sensors={sensors}
-          id={sortableId}
-        >
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-muted">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-muted">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} colSpan={header.colSpan}>
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody className="**:data-[slot=table-cell]:first:w-8">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              {table.getRowModel().rows?.length ? tableBody : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
       <div className="flex items-center justify-between px-4">
         <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
@@ -382,7 +270,7 @@ function AssetTable({ data, draggable = false, onDragEnd }: {
               value={`${table.getState().pagination.pageSize}`}
               onValueChange={(value) => table.setPageSize(Number(value))}
             >
-              <SelectTrigger  className="w-20" id="rows-per-page">
+              <SelectTrigger className="w-20" id="rows-per-page">
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
               </SelectTrigger>
               <SelectContent side="top">
@@ -426,7 +314,7 @@ export function DataTable() {
   const { facilityId } = useFacility()
 
   const { data: fetchedData } = useQuery<Asset[]>({
-    queryKey: ["assets", facilityId],
+    queryKey: queryKeys.assets(facilityId),
     queryFn: () => fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
   })
 
@@ -447,19 +335,6 @@ export function DataTable() {
     if (filterType !== "all" && a.type !== filterType) return false
     return true
   }), [data, search, filterStatus, filterType])
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(() => data.map(({ id }) => id), [data])
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -499,7 +374,7 @@ export function DataTable() {
         </Select>
       </div>
       <div className="px-4 lg:px-6">
-        <AssetTable data={filtered} draggable onDragEnd={handleDragEnd} />
+        <AssetTable data={filtered} />
       </div>
     </div>
   )
