@@ -5,15 +5,28 @@ import { and, avg, count, desc, eq, gte, sql, sum } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 // /api/dashboard/summary?facilityId=???
+/**
+ * GET /api/dashboard/summary
+ * Returns a high-level summary of the current plant status.
+ * Optional query param: ?facilityId=123
+ * 
+ * Logic:
+ * 1. Kicks the lazy simulation to ensure fresh data.
+ * 2. Uses a SQL window function (row_number) to identify the single latest reading for EVERY asset.
+ * 3. Aggregates these latest readings by metric name to get "Total Power", "Total Output", etc.
+ * 4. Counts assets by status and type for the dashboard charts and badges.
+ */
 export async function GET(
     req: Request,
 ) {
     const { searchParams } = new URL(req.url);
     const facilityId = searchParams.get("facilityId") ?? undefined;
 
+    // Trigger simulation if data is stale (>30s)
     kickSimulation();
 
-    // 1. Get the latest reading for each asset using a window function
+    // Subquery: Get the most recent reading for each asset.
+    // We use row_number() partitioned by assetId to pick the top 1 reading per asset.
     const readingsWithRn = db.select({
         metricName: sensorReadings.metricName,
         value: sensorReadings.value,
@@ -24,6 +37,7 @@ export async function GET(
         .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined)
         .as("readings_with_rn");
 
+    // Filter to only the latest readings (rn = 1)
     const latestReadings = db.select({
         metricName: readingsWithRn.metricName,
         value: readingsWithRn.value,
@@ -32,8 +46,9 @@ export async function GET(
         .where(eq(readingsWithRn.rn, 1))
         .as("latest_readings");
 
+    // Execute multiple aggregation queries in parallel
     const [metrics, assetStatuses, assetTypes, totalResult] = await Promise.all([
-        // current plant status: latest values for each metric, aggregated
+        // Aggregated plant status: Sum of latest values (Total Power) and average (Mean Temp)
         db.select({
             metricName: latestReadings.metricName,
             totalValue: sum(latestReadings.value),
@@ -41,7 +56,8 @@ export async function GET(
             unit: latestReadings.unit,
         }).from(latestReadings)
             .groupBy(latestReadings.metricName, latestReadings.unit),
-        // 2. Asset counts by status
+        
+        // Distribution of asset operational statuses (online, error, etc.)
         db.select({
             status: assets.status,
             count: count()
@@ -49,17 +65,19 @@ export async function GET(
             .from(assets)
             .groupBy(assets.status)
             .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined),
-        // 3. Asset counts by type
+        
+        // Count of assets by their functional type (pump, turbine, etc.)
         db.select({ type: assets.type, count: count() })
             .from(assets)
             .groupBy(assets.type)
             .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined),
-        // 4. Total asset count
+        
+        // Total count of assets in the current scope
         db.select({ count: count() })
             .from(assets)
             .where(facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined),
     ]);
-    // replace with empty response- will fire on fresh/empty db, and when no recent readings.
+
     return NextResponse.json({
         metrics:      metrics      ?? [],
         assetStatuses: assetStatuses ?? [],

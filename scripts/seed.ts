@@ -51,11 +51,18 @@ async function seed() {
         const prefix = facility.name.split(" ")[0]; // e.g. "North", "South", "East"
         for (const template of assetTemplates) {
             for (const name of template.names) {
+                // Weighted status selection (70% online)
+                const rand = Math.random();
+                let status = "online";
+                if (rand < 0.1) status = "error";
+                else if (rand < 0.2) status = "warning";
+                else if (rand < 0.3) status = "offline";
+
                 const [inserted] = await db.insert(assets).values({
                     facilityId: facility.id,
                     name: `${prefix} ${name}`,
                     type: template.type,
-                    status: STATUSES[Math.floor(Math.random() * STATUSES.length)],
+                    status: status,
                 }).returning().execute();
                 insertedAssets.push(inserted);
             }
@@ -75,8 +82,25 @@ async function seed() {
         for (const metric of relevantMetrics) {
             for (let i = 0; i < 256; i++) { // generate 256 readings per asset/metric
                 const timestamp = new Date(now.getTime() - (256 - i) * 5 * 60 * 1000); // 5 minute intervals over past 24 hours
-                const variation = (Math.random() - 0.5) * 2 * metric.variance; // random variation within ±variance
+                
+                let variation = (Math.random() - 0.5) * 2 * metric.variance; // random variation within ±variance
                 const trend = Math.sin(i / 48) * (metric.variance * 0.3); // add a sinusoidal trend to simulate daily patterns
+                
+                // Add realistic deviations for non-online assets
+                if (asset.status === "warning") {
+                    variation *= 1.5; // more jitter
+                    if (Math.random() < 0.05) variation += metric.variance * 2; // occasional small spikes
+                } else if (asset.status === "error") {
+                    variation *= 2.5; // extreme jitter
+                    if (Math.random() < 0.1) variation += metric.variance * 4; // frequent large spikes
+                    if (Math.random() < 0.05) variation -= metric.variance * 4; // frequent large drops
+                } else if (asset.status === "offline") {
+                    // mostly zero or very low noise
+                    const value = Math.max(0, (Math.random() * 2)); 
+                    readings.push({ assetId: asset.id, metricName: metric.name, value: parseFloat(value.toFixed(2)), unit: metric.unit, timestamp });
+                    continue;
+                }
+
                 const value = Math.max(0, metric.base + variation + trend); // ensure value is non-negative
 
                 readings.push({

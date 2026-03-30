@@ -57,53 +57,171 @@ import {
   ChevronsRightIcon,
   SearchIcon,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceArea,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts"
+import { ASSET_METRICS, METRICS } from "@/server/db/metrics"
+import { toLabel } from "@/lib/utils"
 
 
+type Reading = {
+  bucket: string
+  assetId: number
+  assetName: string
+  metricName: string
+  unit: string
+  avg: number
+  min: number
+  max: number
+}
+
+/**
+ * Renders individual sparkline-style charts for each metric reported by a single asset.
+ * Includes "Safe Zone" reference areas for each metric type.
+ */
+function AssetCharts({ assetId, assetType }: { assetId: number; assetType: string }) {
+  // Fetch asset-specific readings for the last 6 hours
+  const { data: readings = [] } = useQuery<Reading[]>({
+    queryKey: queryKeys.sensorReadings("6", null), 
+    queryFn: () => fetch(`/api/sensor-readings?hours=6&assetId=${assetId}`).then(r => r.json()),
+  })
+
+  // Determine which metrics this asset type reports
+  const metricNames = ASSET_METRICS[assetType] ?? ["temperature"]
+  const assetMetrics = METRICS.filter(m => metricNames.includes(m.name as any))
+
+  if (readings.length === 0) return <div className="py-8 text-center text-muted-foreground">No recent data</div>
+
+  return (
+    <div className="flex flex-col gap-6 py-4">
+      {assetMetrics.map((m) => {
+        // Prepare chart-ready data for each metric
+        const chartData = readings
+          .filter(r => r.metricName === m.name)
+          .sort((a, b) => new Date(a.bucket).getTime() - new Date(b.bucket).getTime())
+          .map(r => ({
+            time: new Date(r.bucket).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            value: r.avg,
+          }))
+
+        if (chartData.length === 0) return null
+
+        return (
+          <div key={m.name} className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground">{toLabel(m.name)} ({m.unit})</span>
+            <div className="h-[120px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="time" hide />
+                  <YAxis hide domain={['auto', 'auto']} />
+                  <RechartsTooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="rounded-lg border bg-background p-2 shadow-sm text-[10px]">
+                            <span className="font-bold">{payload[0].value} {m.unit}</span>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  {m.max && <ReferenceArea y1={m.max} y2={"auto" as any} fill="red" fillOpacity={0.1} />}
+                  {m.min && <ReferenceArea y1={0} y2={m.min} fill="red" fillOpacity={0.1} />}
+                  {m.max && <ReferenceLine y={m.max} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />}
+                  {m.min && <ReferenceLine y={m.min} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />}
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="var(--primary)"
+                    fill="var(--primary)"
+                    fillOpacity={0.1}
+                    strokeWidth={2}
+                    dot={(props: any) => {
+                      const { cx, cy, value } = props;
+                      if (value > m.max || value < m.min) {
+                        return <circle key={`${m.name}-${cx}`} cx={cx} cy={cy} r={3} fill="red" stroke="white" strokeWidth={1} />;
+                      }
+                      return null;
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Slide-out drawer showing full asset details and its sensor history.
+ * Mobile: Bottom sheet
+ * Desktop: Right-side panel
+ */
 function AssetDrawer({ asset }: { asset: Asset }) {
   const isMobile = useIsMobile()
   return (
     <Drawer direction={isMobile ? "bottom" : "right"}>
       <DrawerTrigger asChild>
-        <Button variant="link" className="w-fit px-0 text-left text-foreground">
+        <Button variant="link" className="w-fit px-0 text-left text-foreground font-medium hover:no-underline">
           {asset.name}
         </Button>
       </DrawerTrigger>
-      <DrawerContent>
+      <DrawerContent className={cn("flex flex-col h-full", !isMobile && "max-w-md ml-auto")}>
         <DrawerHeader className="gap-1">
           <DrawerTitle>{asset.name}</DrawerTitle>
           <DrawerDescription className="sr-only">Asset details and recent sensor readings</DrawerDescription>
         </DrawerHeader>
-        <div className="flex flex-col gap-4 px-4 text-sm">
-          <Separator />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Type</span>
-              <span className="capitalize font-medium">{asset.type}</span>
+        <div className="flex-1 overflow-y-auto px-4 text-sm">
+          <div className="flex flex-col gap-4">
+            <Separator />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Type</span>
+                <span className="capitalize font-medium">{asset.type}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Status</span>
+                <StatusBadge status={asset.status} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Facility</span>
+                <span className="font-medium">{asset.facilityName}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Location</span>
+                <span className="font-medium">{asset.facilityLocation ?? "—"}</span>
+              </div>
             </div>
+            {asset.description && (
+              <>
+                <Separator />
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground">Description</span>
+                  <span>{asset.description}</span>
+                </div>
+              </>
+            )}
+            <Separator />
             <div className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Status</span>
-              <StatusBadge status={asset.status} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Facility</span>
-              <span className="font-medium">{asset.facilityName}</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Location</span>
-              <span className="font-medium">{asset.facilityLocation ?? "—"}</span>
+              <span className="text-muted-foreground font-medium mb-2 uppercase tracking-wider text-[10px]">Sensor History (6h)</span>
+              <AssetCharts assetId={asset.id} assetType={asset.type} />
             </div>
           </div>
-          {asset.description && (
-            <>
-              <Separator />
-              <div className="flex flex-col gap-1">
-                <span className="text-muted-foreground">Description</span>
-                <span>{asset.description}</span>
-              </div>
-            </>
-          )}
         </div>
-        <DrawerFooter>
+        <DrawerFooter className="pt-4 border-t">
           <DrawerClose asChild>
             <Button variant="outline">Close</Button>
           </DrawerClose>
@@ -145,8 +263,18 @@ const columns: ColumnDef<Asset>[] = [
   },
 ]
 
+/**
+ * Assets Data Table.
+ * Features:
+ * - Full-text search on asset names
+ * - Status and Type filtering
+ * - Pagination (Client-side)
+ * - Detail view via AssetDrawer
+ */
 export function DataTable() {
   const { facilityId } = useFacility()
+  
+  // Table state: filtering, sorting, and pagination
   const [search, setSearch] = React.useState("")
   const [filterStatus, setFilterStatus] = React.useState("all")
   const [filterType, setFilterType] = React.useState("all")

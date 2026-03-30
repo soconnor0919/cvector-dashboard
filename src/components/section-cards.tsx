@@ -28,13 +28,25 @@ function onlineBadgeClass(pct: number) {
   return statusClasses.error
 }
 
+/**
+ * Renders the top-level KPI cards for the dashboard.
+ * Shows:
+ * - Total Assets and their online percentage
+ * - Total Power Consumption (sum of latest readings)
+ * - Total Output Rate (sum of latest readings)
+ * - Active Alert Count (warning/error statuses)
+ * - Summary of online vs offline assets
+ */
 export function SectionCards() {
   const { facilityId } = useFacility()
+  
+  // Fetch summary data: auto-refetches every 30s as configured in query-provider
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.summary(facilityId),
     queryFn: () => fetch(`/api/dashboard/summary${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
   })
 
+  // Data processing: Extract and format KPI values from the aggregated response
   const totalAssets  = Number(data?.totalResult?.count ?? 0)
   const online       = Number(data?.assetStatuses?.find((s: { status: string }) => s.status === "online")?.count ?? 0)
   const totalPower   = parseFloat(data?.metrics?.find((m: { metricName: string }) => m.metricName === "power")?.totalValue ?? "0").toFixed(1)

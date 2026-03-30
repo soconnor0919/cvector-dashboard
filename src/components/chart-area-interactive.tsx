@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts"
+import { Area, AreaChart, CartesianGrid, ReferenceArea, ReferenceLine, XAxis, YAxis, Tooltip } from "recharts"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useFacility } from "@/components/providers/facility-provider"
@@ -49,6 +49,10 @@ type Reading = {
 
 type AssetEntry = { id: number; name: string }
 
+/**
+ * Custom tooltip for the multi-asset sensor chart.
+ * Aggregates and displays min, max, and avg values for all visible assets at a time point.
+ */
 function SensorTooltip({
   active, payload, label, unit,
 }: {
@@ -78,13 +82,24 @@ function SensorTooltip({
   )
 }
 
+/**
+ * Main Interactive Chart Component.
+ * Features:
+ * - Dynamic time-bucketing (managed by API)
+ * - Multi-asset visualization with distinct colors
+ * - Metric and Asset-type filtering
+ * - Safety boundaries (Reference Areas)
+ */
 export function ChartAreaInteractive() {
   const isMobile = useIsMobile()
   const { facilityId } = useFacility()
+  
+  // Dashboard state: metric type, time window, and asset filter
   const [metric, setMetric] = React.useState("power")
   const [hours, setHours] = React.useState("24")
   const [filterAssetId, setFilterAssetId] = React.useState("all")
 
+  // UX: Default to a smaller window on mobile to reduce data density
   React.useEffect(() => {
     if (isMobile) setHours("6")
   }, [isMobile])
@@ -128,13 +143,13 @@ export function ChartAreaInteractive() {
   }, [readings, allAssets, filterAssetId])
 
   const assetGroups = React.useMemo(() => {
-    const statusMap = new Map(assetList.map(a => [a.id, a.status]))
-    const withStatus = visibleAssets.map(a => ({ ...a, status: statusMap.get(a.id) ?? "offline" }))
-    return [
-      { label: "Online",  assets: withStatus.filter(a => a.status === "online") },
-      { label: "Issues",  assets: withStatus.filter(a => a.status === "warning" || a.status === "error") },
-      { label: "Offline", assets: withStatus.filter(a => a.status === "offline") },
-    ].filter(g => g.assets.length > 0)
+    const typeMap = new Map(assetList.map(a => [a.id, a.type]))
+    const withType = visibleAssets.map(a => ({ ...a, type: typeMap.get(a.id) ?? "sensor" }))
+    const types = Array.from(new Set(withType.map(a => a.type))).sort()
+    return types.map(type => ({
+      label: toLabel(type),
+      assets: withType.filter(a => a.type === type).sort((a, b) => a.name.localeCompare(b.name))
+    }))
   }, [visibleAssets, assetList])
 
   const chartConfig = React.useMemo(() => {
@@ -261,6 +276,32 @@ export function ChartAreaInteractive() {
               cursor={false}
               content={<SensorTooltip unit={activeMetric.unit} />}
             />
+            {activeMetric.max && (
+              <ReferenceArea
+                y1={activeMetric.max}
+                y2={"auto" as any}
+                stroke="none"
+                fill="red"
+                fillOpacity={0.05}
+                label={{ position: 'insideTopLeft', value: 'High Warning', fill: 'red', fontSize: 10, opacity: 0.5 }}
+              />
+            )}
+            {activeMetric.min && (
+              <ReferenceArea
+                y1={0}
+                y2={activeMetric.min}
+                stroke="none"
+                fill="red"
+                fillOpacity={0.05}
+                label={{ position: 'insideBottomLeft', value: 'Low Warning', fill: 'red', fontSize: 10, opacity: 0.5 }}
+              />
+            )}
+            {activeMetric.max && (
+              <ReferenceLine y={activeMetric.max} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />
+            )}
+            {activeMetric.min && (
+              <ReferenceLine y={activeMetric.min} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />
+            )}
             {visibleAssets.map((asset) => (
               <Area
                 key={asset.id}
@@ -269,6 +310,13 @@ export function ChartAreaInteractive() {
                 fill={`url(#fill-a${asset.id})`}
                 stroke={`var(--color-a${asset.id})`}
                 strokeWidth={1.5}
+                dot={(props: any) => {
+                  const { cx, cy, value } = props;
+                  if (value > activeMetric.max || value < activeMetric.min) {
+                    return <circle key={`${asset.id}-${cx}`} cx={cx} cy={cy} r={3} fill="red" stroke="white" strokeWidth={1} />;
+                  }
+                  return null;
+                }}
               />
             ))}
           </AreaChart>
