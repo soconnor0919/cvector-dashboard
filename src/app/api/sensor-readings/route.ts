@@ -1,7 +1,7 @@
 import { db } from "@/server/db";
 import { assets, sensorReadings } from "@/server/db/schema";
 import { kickSimulation } from "@/server/simulation";
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 function bucketExpr(hours: number) { // helper to determine appropriate bucketing interval based on time range.
@@ -23,13 +23,6 @@ export async function GET(req: Request) {
 
   const bucket = bucketExpr(hours);
 
-  let assetIds: number[] = [];
-  if (facilityId) {
-    const rows = await db.select({ id: assets.id }).from(assets)
-      .where(eq(assets.facilityId, parseInt(facilityId)));
-    assetIds = rows.map(r => r.id);
-  }
-
   const rows = await db
     .select({
       bucket:     bucket,
@@ -45,7 +38,7 @@ export async function GET(req: Request) {
     .innerJoin(assets, eq(sensorReadings.assetId, assets.id))
     .where(and(
       gte(sensorReadings.timestamp, startTime),
-      facilityId ? inArray(sensorReadings.assetId, assetIds) : undefined,
+      facilityId ? eq(assets.facilityId, parseInt(facilityId)) : undefined,
       assetId    ? eq(sensorReadings.assetId, parseInt(assetId)) : undefined,
     ))
     .groupBy(bucket, assets.id, assets.name, sensorReadings.metricName, sensorReadings.unit)

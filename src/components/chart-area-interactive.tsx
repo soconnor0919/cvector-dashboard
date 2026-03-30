@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useFacility } from "@/components/providers/facility-provider"
 import { toLabel } from "@/lib/utils"
@@ -22,7 +22,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -31,6 +33,7 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
 import { METRICS } from "@/server/db/metrics"
+import { type Asset } from "@/types"
 
 
 type Reading = {
@@ -92,6 +95,12 @@ export function ChartAreaInteractive() {
   const { data: raw = [] } = useQuery<Reading[]>({
     queryKey: queryKeys.sensorReadings(hours, facilityId),
     queryFn: () => fetch(`/api/sensor-readings?${params}`).then(r => r.json()),
+    placeholderData: keepPreviousData,
+  })
+
+  const { data: assetList = [] } = useQuery<Asset[]>({
+    queryKey: queryKeys.assets(facilityId),
+    queryFn: () => fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
   })
 
   const allAssets = React.useMemo(() => {
@@ -117,6 +126,16 @@ export function ChartAreaInteractive() {
       (filterAssetId === "all" || String(a.id) === filterAssetId)
     )
   }, [readings, allAssets, filterAssetId])
+
+  const assetGroups = React.useMemo(() => {
+    const statusMap = new Map(assetList.map(a => [a.id, a.status]))
+    const withStatus = visibleAssets.map(a => ({ ...a, status: statusMap.get(a.id) ?? "offline" }))
+    return [
+      { label: "Online",  assets: withStatus.filter(a => a.status === "online") },
+      { label: "Issues",  assets: withStatus.filter(a => a.status === "warning" || a.status === "error") },
+      { label: "Offline", assets: withStatus.filter(a => a.status === "offline") },
+    ].filter(g => g.assets.length > 0)
+  }, [visibleAssets, assetList])
 
   const chartConfig = React.useMemo(() => {
     const config: ChartConfig = {}
@@ -183,8 +202,13 @@ export function ChartAreaInteractive() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All assets</SelectItem>
-              {allAssets.map(a => (
-                <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+              {assetGroups.map(group => (
+                <SelectGroup key={group.label}>
+                  <SelectLabel>{group.label}</SelectLabel>
+                  {group.assets.map(a => (
+                    <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
