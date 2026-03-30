@@ -2,12 +2,13 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { assets, facilities, sensorReadings } from "../src/server/db/schema";
-import { METRICS } from "../src/server/db/metrics";
+import { ASSET_METRICS, METRICS } from "../src/server/db/metrics";
 
 const client = postgres(process.env.DATABASE_URL!);
 const db = drizzle(client);
 
 const STATUSES = ["online", "offline", "warning", "error"];
+const SENSOR_METRICS = ["temperature", "humidity", "pressure", "flow_rate"]; // fallback for sensors
 
 const facilityData = [
     { name: "North Power Station", location: "Chicago, IL", description: "Coal-fired power generation" },
@@ -67,29 +68,34 @@ async function seed() {
         
 
     for (const asset of insertedAssets) {
-        const metric = METRICS[asset.id % METRICS.length]!; // assign metric based on asset id for variety
+        // assign multiple metrics based on type
+        const metricNames = ASSET_METRICS[asset.type] ?? [SENSOR_METRICS[asset.id % SENSOR_METRICS.length]!];
+        const relevantMetrics = METRICS.filter(m => metricNames.includes(m.name as any));
 
-        for (let i = 0; i < 256; i++) { // generate 256 readings per asset
-            const timestamp = new Date(now.getTime() - (256 - i) * 5 * 60 * 1000); // 5 minute intervals over past 24 hours
-            const variation = (Math.random() - 0.5) * 2 * metric.variance; // random variation within ±variance
-            const trend = Math.sin(i / 48) * (metric.variance * 0.3); // add a sinusoidal trend to simulate daily patterns
-            const value = Math.max(0, metric.base + variation + trend); // ensure value is non-negative
+        for (const metric of relevantMetrics) {
+            for (let i = 0; i < 256; i++) { // generate 256 readings per asset/metric
+                const timestamp = new Date(now.getTime() - (256 - i) * 5 * 60 * 1000); // 5 minute intervals over past 24 hours
+                const variation = (Math.random() - 0.5) * 2 * metric.variance; // random variation within ±variance
+                const trend = Math.sin(i / 48) * (metric.variance * 0.3); // add a sinusoidal trend to simulate daily patterns
+                const value = Math.max(0, metric.base + variation + trend); // ensure value is non-negative
 
-            readings.push({
-                assetId: asset.id,
-                metricName: metric.name,
-                value: parseFloat(value.toFixed(2)), // round to 2 decimal places
-                unit: metric.unit,
-                timestamp,
-            });
+                readings.push({
+                    assetId: asset.id,
+                    metricName: metric.name,
+                    value: parseFloat(value.toFixed(2)), // round to 2 decimal places
+                    unit: metric.unit,
+                    timestamp,
+                });
+            }
         }
     }
     console.log(`Generated ${readings.length} sensor readings.`);
 
-    // Insert in batches of 256 (per asset)
-    for (let i = 0; i < readings.length; i += 256) {
+    // Insert in batches
+    const BATCH_SIZE = 1000;
+    for (let i = 0; i < readings.length; i += BATCH_SIZE) {
     await db.insert(sensorReadings)
-        .values(readings.slice(i, i + 256))
+        .values(readings.slice(i, i + BATCH_SIZE))
         .onConflictDoNothing()
         .execute();
     }
