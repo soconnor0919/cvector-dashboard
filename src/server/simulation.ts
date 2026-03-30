@@ -1,33 +1,49 @@
 import { db } from "./db";
 import { assets, sensorReadings } from "./db/schema";
-import { gte } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { METRICS } from "./db/metrics";
 
-export async function maybeTickSimulation() {
-  // 1. Check: any reading in the last 30 seconds?
-  const thirtySecondsAgo = new Date(Date.now() - 30_000);
-  const recent = await db
-    .select({ id: sensorReadings.id })
-    .from(sensorReadings)
-    .where(gte(sensorReadings.timestamp, thirtySecondsAgo))
-    .limit(1);
-  if (recent.length > 0) return; // fresh data exists, skip
+const TICK_MS = 30_000;
+const MAX_BACKFILL_MS = 24 * 60 * 60 * 1000;
+const BATCH_SIZE = 1000;
 
-  // 2. If not, insert one new reading per asset
+export async function maybeTickSimulation() {
   const allAssets = await db.select().from(assets);
-  const now = new Date();
-  const readings = allAssets.map((asset) => {
-    const metric = METRICS[asset.id % METRICS.length]!;
-    const variation = (Math.random() - 0.5) * 2 * metric.variance;
-    const value = Math.max(0, metric.base + variation);
-    return {
-      assetId: asset.id,
-      metricName: metric.name,
-      value: Math.round(value * 100) / 100,
-      unit: metric.unit,
-      timestamp: now,
-    };
-  });
-  
-  await db.insert(sensorReadings).values(readings);
+  if (allAssets.length === 0) return;
+
+  const [last] = await db
+    .select({ timestamp: sensorReadings.timestamp })
+    .from(sensorReadings)
+    .orderBy(desc(sensorReadings.timestamp))
+    .limit(1);
+
+  const now = Date.now();
+  const lastMs = last ? last.timestamp.getTime() : now - MAX_BACKFILL_MS;
+
+  if (now - lastMs <= TICK_MS) return; // fresh, skip
+
+  // backfill from last reading up to now, capped at 24h
+  const startMs = Math.max(lastMs + TICK_MS, now - MAX_BACKFILL_MS);
+  const ticks: Date[] = [];
+  for (let t = startMs; t <= now; t += TICK_MS) {
+    ticks.push(new Date(t));
+  }
+
+  const readings = ticks.flatMap((timestamp) =>
+    allAssets.map((asset) => {
+      const metric = METRICS[asset.id % METRICS.length]!;
+      const variation = (Math.random() - 0.5) * 2 * metric.variance;
+      return {
+        assetId: asset.id,
+        metricName: metric.name,
+        value: Math.round(Math.max(0, metric.base + variation) * 100) / 100,
+        unit: metric.unit,
+        timestamp,
+      };
+    })
+  );
+
+  for (let i = 0; i < readings.length; i += BATCH_SIZE) {
+    await db.insert(sensorReadings).values(readings.slice(i, i + BATCH_SIZE));
+  }
 }
