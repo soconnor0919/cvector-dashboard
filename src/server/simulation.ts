@@ -7,7 +7,9 @@ const TICK_MS = 30_000;
 const MAX_BACKFILL_MS = 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 1000;
 
-export async function maybeTickSimulation() {
+let running = false;
+
+async function runSimulation() {
   const allAssets = await db.select().from(assets);
   if (allAssets.length === 0) return;
 
@@ -20,9 +22,8 @@ export async function maybeTickSimulation() {
   const now = Date.now();
   const lastMs = last ? last.timestamp.getTime() : now - MAX_BACKFILL_MS;
 
-  if (now - lastMs <= TICK_MS) return; // fresh, skip
+  if (now - lastMs <= TICK_MS) return;
 
-  // backfill from last reading up to now, capped at 24h
   const startMs = Math.max(lastMs + TICK_MS, now - MAX_BACKFILL_MS);
   const ticks: Date[] = [];
   for (let t = startMs; t <= now; t += TICK_MS) {
@@ -46,4 +47,10 @@ export async function maybeTickSimulation() {
   for (let i = 0; i < readings.length; i += BATCH_SIZE) {
     await db.insert(sensorReadings).values(readings.slice(i, i + BATCH_SIZE));
   }
+}
+
+export function kickSimulation() {
+  if (running) return;
+  running = true;
+  runSimulation().catch(console.error).finally(() => { running = false; });
 }

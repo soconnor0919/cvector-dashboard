@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { assets, sensorReadings } from "@/server/db/schema";
-import { maybeTickSimulation } from "@/server/simulation";
+import { kickSimulation } from "@/server/simulation";
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const assetId    = searchParams.get("assetId")    ?? undefined;
   const startTime  = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-  await maybeTickSimulation();
+  kickSimulation();
 
   const bucket = bucketExpr(hours);
 

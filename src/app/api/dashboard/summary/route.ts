@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { assets, sensorReadings } from "@/server/db/schema";
-import { maybeTickSimulation } from "@/server/simulation";
+import { kickSimulation } from "@/server/simulation";
 import { and, avg, count, eq, gte, max } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -12,7 +12,7 @@ export async function GET(
     const facilityId = searchParams.get("facilityId") ?? undefined;
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
 
-    await maybeTickSimulation(); // ensure simulation is up to date before querying for metrics
+    kickSimulation();
 
     const [metrics, assetStatuses, assetTypes, totalResult] = await Promise.all([
         // metric averages from the last 2 hours
