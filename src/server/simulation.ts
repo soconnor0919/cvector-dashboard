@@ -15,6 +15,8 @@ async function runSimulation() {
   if (recent.length > 0) return;
 
   const allAssets = await db.select().from(assets);
+  if (allAssets.length === 0) return;
+
   const now = new Date();
   const readings = allAssets.map((asset) => {
     const metric = METRICS[asset.id % METRICS.length]!;
