@@ -54,12 +54,15 @@ type AssetEntry = { id: number; name: string }
  * Aggregates and displays min, max, and avg values for all visible assets at a time point.
  */
 function SensorTooltip({
-  active, payload, label, unit,
+  active, payload, label, unit, metricMin, metricMax, chartConfig,
 }: {
   active?: boolean
   payload?: { dataKey: string; value: number; payload: Record<string, number> }[]
   label?: string
   unit: string
+  metricMin?: number
+  metricMax?: number
+  chartConfig: ChartConfig
 }) {
   if (!active || !payload?.length) return null
   const assets = payload.filter(p => !String(p.dataKey).includes("_"))
@@ -70,6 +73,11 @@ function SensorTooltip({
   const avgs = assets.map(p => Number(p.value)).filter(Number.isFinite)
   const avg  = Math.round((avgs.reduce((a, b) => a + b, 0) / avgs.length) * 100) / 100
 
+  const outliers = assets.filter(p => {
+    const v = Number(p.value)
+    return (metricMax && v > metricMax) || (metricMin && v < metricMin)
+  })
+
   return (
     <div className="rounded-lg border bg-background p-3 shadow-md text-xs">
       <p className="mb-2 font-medium text-foreground">{label}</p>
@@ -78,6 +86,17 @@ function SensorTooltip({
         <span>Avg<br /><span className="text-foreground font-medium">{avg} {unit}</span></span>
         <span>Max<br /><span className="text-foreground font-medium">{Math.max(...maxs)} {unit}</span></span>
       </div>
+      {outliers.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border">
+          <p className="text-red-500 font-medium mb-1">Out of range</p>
+          {outliers.map(p => (
+            <div key={p.dataKey} className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground truncate">{String(chartConfig[p.dataKey]?.label ?? p.dataKey)}</span>
+              <span className="text-red-500 font-medium tabular-nums">{Number(p.value).toFixed(2)} {unit}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -289,7 +308,7 @@ const { data: assetList = [] } = useQuery<Asset[]>({
             <YAxis tickLine={false} axisLine={false} tickMargin={8} width={50} />
             <Tooltip
               cursor={false}
-              content={<SensorTooltip unit={activeMetric.unit} />}
+              content={<SensorTooltip unit={activeMetric.unit} metricMin={activeMetric.min} metricMax={activeMetric.max} chartConfig={chartConfig} />}
             />
             {activeMetric.max && (
               <ReferenceLine y={activeMetric.max} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} label={{ position: 'insideTopLeft', value: 'High', fill: 'red', fontSize: 10, opacity: 0.5 }} />
