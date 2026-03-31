@@ -7,7 +7,7 @@
 
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 interface FacilityContextValue {
   facilityId: string | null;
@@ -27,13 +27,18 @@ export function FacilityProvider({ children }: { children: React.ReactNode }) {
   const [facilityId, setFacilityIdState] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
-  const setFacilityId = (id: string | null) => {
+  const setFacilityId = useCallback((id: string | null) => {
     setFacilityIdState(id);
-    setSelectedAssetId(null); // Clear asset selection when switching facilities
-  };
+    setSelectedAssetId(null);
+  }, []);
+
+  const value = useMemo(
+    () => ({ facilityId, setFacilityId, selectedAssetId, setSelectedAssetId }),
+    [facilityId, setFacilityId, selectedAssetId, setSelectedAssetId]
+  );
 
   return (
-    <FacilityContext.Provider value={{ facilityId, setFacilityId, selectedAssetId, setSelectedAssetId }}>
+    <FacilityContext.Provider value={value}>
       {children}
     </FacilityContext.Provider>
   );

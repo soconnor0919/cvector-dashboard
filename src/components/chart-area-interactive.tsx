@@ -202,7 +202,7 @@ const { data: assetList = [] } = useQuery<Asset[]>({
     }))
   }, [assetsWithMetric, assetList])
 
-  const activeMetric = METRICS.find(m => m.name === metric)!
+  const activeMetric = METRICS.find(m => m.name === metric) ?? METRICS[0]!
 
   const outlierAssets = React.useMemo(() => {
     const outliers = new Set<number>()
