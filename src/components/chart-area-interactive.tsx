@@ -94,19 +94,12 @@ export function ChartAreaInteractive() {
   const isMobile = useIsMobile()
   const { facilityId, selectedAssetId, setSelectedAssetId } = useFacility()
   
-  // Dashboard state: metric type, time window, and asset filter
+  // Dashboard state: metric type and time window
   const [metric, setMetric] = React.useState("power")
   const [hours, setHours] = React.useState("24")
-  const [filterAssetId, setFilterAssetId] = React.useState("all")
 
-  // Sync context selectedAssetId to local filterAssetId
-  React.useEffect(() => {
-    if (selectedAssetId) {
-      setFilterAssetId(selectedAssetId)
-    } else {
-      setFilterAssetId("all")
-    }
-  }, [selectedAssetId])
+  // Asset filter is driven directly from context — no local copy needed
+  const filterAssetId = selectedAssetId ?? "all"
 
   // UX: Default to a smaller window on mobile to reduce data density
   React.useEffect(() => {
