@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { ActivityIcon } from "lucide-react"
 import { useFacility } from "@/components/providers/facility-provider"
 import { queryKeys } from "@/lib/query-keys"
@@ -33,11 +33,13 @@ function useDashboardData() {
   const { data: summary } = useQuery({
     queryKey: queryKeys.summary(facilityId),
     queryFn: () => fetch(`/api/dashboard/summary${qs}`).then(r => r.json()),
+    placeholderData: keepPreviousData,
   })
 
   const { data: assets = [] } = useQuery<Asset[]>({
     queryKey: queryKeys.assets(facilityId),
     queryFn: () => fetch(`/api/assets${qs}`).then(r => r.json()).then(d => Array.isArray(d) ? d : []),
+    placeholderData: keepPreviousData,
   })
 
   const total  = Number(summary?.totalResult?.count ?? 0)

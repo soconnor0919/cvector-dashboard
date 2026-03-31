@@ -13,7 +13,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useFacility } from "@/components/providers/facility-provider"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { queryKeys } from "@/lib/query-keys"
@@ -282,6 +282,7 @@ export function DataTable() {
   const { data: fetchedData = [] } = useQuery<Asset[]>({
     queryKey: queryKeys.assets(facilityId),
     queryFn: () => fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
+    placeholderData: keepPreviousData,
   })
 
   const types = React.useMemo(() => [...new Set(fetchedData.map(a => a.type))].sort(), [fetchedData])

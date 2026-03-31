@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 
 function Shimmer({ className }: { className?: string }) {
   return (
@@ -44,6 +44,7 @@ export function SectionCards() {
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.summary(facilityId),
     queryFn: () => fetch(`/api/dashboard/summary${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
+    placeholderData: keepPreviousData,
   })
 
   // Data processing: Extract and format KPI values from the aggregated response

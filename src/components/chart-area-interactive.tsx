@@ -155,11 +155,17 @@ export function ChartAreaInteractive() {
     queryFn: () => fetch(`/api/sensor-readings?${params}`).then(r => r.json()),
     placeholderData: keepPreviousData,
   })
-  rawRef.current = raw
+
+  // Keep ref in sync so the selectedAssetId effect below can read latest raw
+  // without depending on it (avoids re-firing every 30s on polling)
+  React.useEffect(() => {
+    rawRef.current = raw
+  }, [raw])
 
 const { data: assetList = [] } = useQuery<Asset[]>({
     queryKey: queryKeys.assets(facilityId),
     queryFn: () => fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
+    placeholderData: keepPreviousData,
   })
 
   const allAssets = React.useMemo(() => {

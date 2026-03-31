@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Label, Pie, PieChart } from "recharts"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useFacility } from "@/components/providers/facility-provider"
 import { queryKeys } from "@/lib/query-keys"
 import {
@@ -47,6 +47,7 @@ export function ChartStatusPie() {
   const { data } = useQuery({
     queryKey: queryKeys.summary(facilityId),
     queryFn: () => fetch(`/api/dashboard/summary?${params}`).then(r => r.json()),
+    placeholderData: keepPreviousData,
   })
 
   const chartData = React.useMemo(() => 
