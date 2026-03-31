@@ -90,7 +90,7 @@ type Reading = {
 function AssetCharts({ assetId, assetType }: { assetId: number; assetType: string }) {
   // Fetch asset-specific readings for the last 6 hours
   const { data: readings = [] } = useQuery<Reading[]>({
-    queryKey: queryKeys.sensorReadings("6", null), 
+    queryKey: [...queryKeys.sensorReadings("6", null), assetId],
     queryFn: () => fetch(`/api/sensor-readings?hours=6&assetId=${assetId}`).then(r => r.json()),
   })
 

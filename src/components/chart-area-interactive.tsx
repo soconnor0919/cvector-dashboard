@@ -122,9 +122,23 @@ export function ChartAreaInteractive() {
 
   // Scroll chart into view when an asset is selected from the sidebar
   const cardRef = React.useRef<HTMLDivElement>(null)
+
+  // Keep a ref to raw so the auto-focus effect can read it without depending on it
+  // (avoids re-firing every 30s on polling)
+  const rawRef = React.useRef<Reading[]>([])
+
   React.useEffect(() => {
-    if (selectedAssetId) {
-      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    if (!selectedAssetId) return
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    // Switch to the metric that's out of range for this asset
+    const assetReadings = rawRef.current.filter(r => String(r.assetId) === selectedAssetId)
+    for (const r of assetReadings) {
+      const mDef = METRICS.find(m => m.name === r.metricName)
+      if (!mDef) continue
+      if ((mDef.max && Number(r.avg) > mDef.max) || (mDef.min && Number(r.avg) < mDef.min)) {
+        setMetric(r.metricName)
+        break
+      }
     }
   }, [selectedAssetId])
 
@@ -141,6 +155,7 @@ export function ChartAreaInteractive() {
     queryFn: () => fetch(`/api/sensor-readings?${params}`).then(r => r.json()),
     placeholderData: keepPreviousData,
   })
+  rawRef.current = raw
 
 const { data: assetList = [] } = useQuery<Asset[]>({
     queryKey: queryKeys.assets(facilityId),
