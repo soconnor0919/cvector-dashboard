@@ -186,15 +186,21 @@ const { data: assetList = [] } = useQuery<Asset[]>({
     )
   }, [readings, allAssets, filterAssetId])
 
+  // Dropdown lists all assets that have data for the current metric — not filtered by selection
+  const assetsWithMetric = React.useMemo(() => {
+    const withMetric = new Set(raw.filter(r => r.metricName === metric).map(r => r.assetId))
+    return allAssets.filter(a => withMetric.has(a.id))
+  }, [raw, metric, allAssets])
+
   const assetGroups = React.useMemo(() => {
     const typeMap = new Map(assetList.map(a => [a.id, a.type]))
-    const withType = visibleAssets.map(a => ({ ...a, type: typeMap.get(a.id) ?? "sensor" }))
+    const withType = assetsWithMetric.map(a => ({ ...a, type: typeMap.get(a.id) ?? "sensor" }))
     const types = Array.from(new Set(withType.map(a => a.type))).sort()
     return types.map(type => ({
       label: toLabel(type),
       assets: withType.filter(a => a.type === type).sort((a, b) => a.name.localeCompare(b.name))
     }))
-  }, [visibleAssets, assetList])
+  }, [assetsWithMetric, assetList])
 
   const activeMetric = METRICS.find(m => m.name === metric)!
 
