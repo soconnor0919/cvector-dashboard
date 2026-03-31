@@ -9,7 +9,6 @@ import { StatusBadge, statusClasses } from "@/components/status-badge"
 import { cn, toLabel } from "@/lib/utils"
 import { type Asset } from "@/types"
 import { NavUser } from "@/components/nav-user"
-import { Separator } from "@/components/ui/separator"
 import {
   Sidebar,
   SidebarContent,
@@ -81,6 +80,7 @@ function LiveStatus() {
 
 function ActiveIssues() {
   const { issues } = useDashboardData()
+  const { setSelectedAssetId, selectedAssetId } = useFacility()
 
   return (
     <div className="px-3 py-2">
@@ -88,20 +88,24 @@ function ActiveIssues() {
       {issues.length === 0 ? (
         <p className="px-2 text-sm text-muted-foreground">All clear</p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {issues.map((asset, i) => (
-            <div key={asset.id} className="flex flex-col gap-2">
-              {i > 0 && <Separator />}
-              <div className="flex flex-col gap-1 px-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium">{asset.name}</span>
-                  <StatusBadge status={asset.status} />
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {asset.facilityName} · {toLabel(asset.type)}
-                </span>
+        <div className="flex flex-col gap-1">
+          {issues.map((asset) => (
+            <button
+              key={asset.id}
+              onClick={() => setSelectedAssetId(selectedAssetId === String(asset.id) ? null : String(asset.id))}
+              className={cn(
+                "flex flex-col gap-1 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground",
+                selectedAssetId === String(asset.id) && "bg-accent text-accent-foreground shadow-sm ring-1 ring-border"
+              )}
+            >
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="truncate text-sm font-medium">{asset.name}</span>
+                <StatusBadge status={asset.status} />
               </div>
-            </div>
+              <span className="text-xs text-muted-foreground">
+                {asset.facilityName} · {toLabel(asset.type)}
+              </span>
+            </button>
           ))}
         </div>
       )}

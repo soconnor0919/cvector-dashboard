@@ -1,6 +1,7 @@
 "use client"
 
-import { LabelList, Pie, PieChart } from "recharts"
+import * as React from "react"
+import { Label, Pie, PieChart } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 import { useFacility } from "@/components/providers/facility-provider"
 import { queryKeys } from "@/lib/query-keys"
@@ -33,6 +34,10 @@ const statusConfig: ChartConfig = {
   offline: { label: "Offline", color: STATUS_COLORS.offline },
 }
 
+/**
+ * Donut chart component showing asset status distribution.
+ * Uses a centered Label to display total assets, preventing text overlap.
+ */
 export function ChartStatusPie() {
   const { facilityId } = useFacility()
 
@@ -44,12 +49,15 @@ export function ChartStatusPie() {
     queryFn: () => fetch(`/api/dashboard/summary?${params}`).then(r => r.json()),
   })
 
-  const chartData: { status: string; count: number; fill: string }[] =
+  const chartData = React.useMemo(() => 
     (data?.assetStatuses ?? []).map((s: { status: string; count: number }) => ({
       status: s.status,
-      count:  s.count,
+      count:  Number(s.count),
       fill:   STATUS_COLORS[s.status] ?? "#6b7280",
-    }))
+    })), [data])
+
+  const totalAssets = React.useMemo(() => 
+    chartData.reduce((acc: number, curr: { count: number }) => acc + curr.count, 0), [chartData])
 
   return (
     <Card className="flex flex-col">
@@ -60,18 +68,45 @@ export function ChartStatusPie() {
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={statusConfig}
-          className="mx-auto aspect-square max-h-[280px] [&_.recharts-text]:fill-background"
+          className="mx-auto aspect-square max-h-[250px]"
         >
           <PieChart>
-            <ChartTooltip content={<ChartTooltipContent nameKey="count" hideLabel />} />
-            <Pie data={chartData} dataKey="count" nameKey="status">
-              <LabelList
-                dataKey="status"
-                stroke="none"
-                fontSize={12}
-                formatter={(value) =>
-                  `${statusConfig[value as string]?.label ?? value} (${chartData.find(d => d.status === value)?.count ?? 0})`
-                }
+            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+            <Pie
+              data={chartData}
+              dataKey="count"
+              nameKey="status"
+              innerRadius={60}
+              strokeWidth={5}
+            >
+              <Label
+                content={({ viewBox }) => {
+                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                    return (
+                      <text
+                        x={viewBox.cx}
+                        y={viewBox.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        <tspan
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          className="fill-foreground text-3xl font-bold"
+                        >
+                          {totalAssets.toLocaleString()}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) + 24}
+                          className="fill-muted-foreground text-xs uppercase"
+                        >
+                          Assets
+                        </tspan>
+                      </text>
+                    )
+                  }
+                }}
               />
             </Pie>
           </PieChart>

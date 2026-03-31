@@ -2,13 +2,12 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { assets, facilities, sensorReadings } from "../src/server/db/schema";
-import { ASSET_METRICS, METRICS } from "../src/server/db/metrics";
+import { ASSET_METRICS, METRICS, type MetricName } from "../src/server/db/metrics";
 
 const client = postgres(process.env.DATABASE_URL!);
 const db = drizzle(client);
 
-const STATUSES = ["online", "offline", "warning", "error"];
-const SENSOR_METRICS = ["temperature", "humidity", "pressure", "flow_rate"]; // fallback for sensors
+const SENSOR_METRICS: MetricName[] = ["temperature", "humidity", "pressure", "flow_rate"]; // fallback for sensors
 
 const facilityData = [
     { name: "North Power Station", location: "Chicago, IL", description: "Coal-fired power generation" },
@@ -76,8 +75,8 @@ async function seed() {
 
     for (const asset of insertedAssets) {
         // assign multiple metrics based on type
-        const metricNames = ASSET_METRICS[asset.type] ?? [SENSOR_METRICS[asset.id % SENSOR_METRICS.length]!];
-        const relevantMetrics = METRICS.filter(m => metricNames.includes(m.name as any));
+        const metricNames: MetricName[] = ASSET_METRICS[asset.type] ?? [SENSOR_METRICS[asset.id % SENSOR_METRICS.length]!];
+        const relevantMetrics = METRICS.filter(m => metricNames.includes(m.name));
 
         for (const metric of relevantMetrics) {
             for (let i = 0; i < 256; i++) { // generate 256 readings per asset/metric

@@ -97,7 +97,7 @@ function AssetCharts({ assetId, assetType }: { assetId: number; assetType: strin
 
   // Determine which metrics this asset type reports
   const metricNames = ASSET_METRICS[assetType] ?? ["temperature"]
-  const assetMetrics = METRICS.filter(m => metricNames.includes(m.name as any))
+  const assetMetrics = METRICS.filter(m => (metricNames as string[]).includes(m.name))
 
   if (readings.length === 0) return <div className="py-8 text-center text-muted-foreground">No recent data</div>
 
@@ -106,7 +106,7 @@ function AssetCharts({ assetId, assetType }: { assetId: number; assetType: strin
       {assetMetrics.map((m) => {
         // Prepare chart-ready data for each metric
         const chartData = readings
-          .filter(r => r.metricName === m.name)
+          .filter(r => r.metricName === m.name && r.assetId === assetId)
           .sort((a, b) => new Date(a.bucket).getTime() - new Date(b.bucket).getTime())
           .map(r => ({
             time: new Date(r.bucket).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -136,8 +136,8 @@ function AssetCharts({ assetId, assetType }: { assetId: number; assetType: strin
                       return null
                     }}
                   />
-                  {m.max && <ReferenceArea y1={m.max} y2={"auto" as any} fill="red" fillOpacity={0.1} />}
-                  {m.min && <ReferenceArea y1={0} y2={m.min} fill="red" fillOpacity={0.1} />}
+                  {m.max && <ReferenceArea y1={m.max} fill="red" fillOpacity={0.1} />}
+                  {m.min && <ReferenceArea y2={m.min} fill="red" fillOpacity={0.1} />}
                   {m.max && <ReferenceLine y={m.max} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />}
                   {m.min && <ReferenceLine y={m.min} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />}
                   <Area
@@ -147,8 +147,10 @@ function AssetCharts({ assetId, assetType }: { assetId: number; assetType: strin
                     fill="var(--primary)"
                     fillOpacity={0.1}
                     strokeWidth={2}
-                    dot={(props: any) => {
-                      const { cx, cy, value } = props;
+                    dot={(props: Record<string, unknown>) => {
+                      const cx = props.cx as number;
+                      const cy = props.cy as number;
+                      const value = props.value as number;
                       if (value > m.max || value < m.min) {
                         return <circle key={`${m.name}-${cx}`} cx={cx} cy={cy} r={3} fill="red" stroke="white" strokeWidth={1} />;
                       }
@@ -170,14 +172,12 @@ function AssetCharts({ assetId, assetType }: { assetId: number; assetType: strin
  * Mobile: Bottom sheet
  * Desktop: Right-side panel
  */
-function AssetDrawer({ asset }: { asset: Asset }) {
+function AssetDrawer({ asset, children }: { asset: Asset; children: React.ReactNode }) {
   const isMobile = useIsMobile()
   return (
     <Drawer direction={isMobile ? "bottom" : "right"}>
       <DrawerTrigger asChild>
-        <Button variant="link" className="w-fit px-0 text-left text-foreground font-medium hover:no-underline">
-          {asset.name}
-        </Button>
+        {children}
       </DrawerTrigger>
       <DrawerContent className={cn("flex flex-col h-full", !isMobile && "max-w-md ml-auto")}>
         <DrawerHeader className="gap-1">
@@ -235,7 +235,7 @@ const columns: ColumnDef<Asset>[] = [
   {
     accessorKey: "name",
     header: "Name",
-    cell: ({ row }) => <AssetDrawer asset={row.original} />,
+    cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
     enableHiding: false,
   },
   {
@@ -272,7 +272,7 @@ const columns: ColumnDef<Asset>[] = [
  * - Detail view via AssetDrawer
  */
 export function DataTable() {
-  const { facilityId } = useFacility()
+  const { facilityId, setSelectedAssetId } = useFacility()
   
   // Table state: filtering, sorting, and pagination
   const [search, setSearch] = React.useState("")
@@ -367,13 +367,18 @@ export function DataTable() {
               <TableBody>
                 {table.getRowModel().rows.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
+                    <AssetDrawer key={row.id} asset={row.original}>
+                      <TableRow 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedAssetId(String(row.original.id))}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </AssetDrawer>
                   ))
                 ) : (
                   <TableRow>

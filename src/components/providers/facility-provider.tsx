@@ -12,17 +12,28 @@ import { createContext, useContext, useState } from "react";
 interface FacilityContextValue {
   facilityId: string | null;
   setFacilityId: (id: string | null) => void;
+  selectedAssetId: string | null;
+  setSelectedAssetId: (id: string | null) => void;
 }
 
 const FacilityContext = createContext<FacilityContextValue>({
   facilityId: null,
   setFacilityId: () => {},
+  selectedAssetId: null,
+  setSelectedAssetId: () => {},
 });
 
 export function FacilityProvider({ children }: { children: React.ReactNode }) {
-  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const [facilityId, setFacilityIdState] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+
+  const setFacilityId = (id: string | null) => {
+    setFacilityIdState(id);
+    setSelectedAssetId(null); // Clear asset selection when switching facilities
+  };
+
   return (
-    <FacilityContext.Provider value={{ facilityId, setFacilityId }}>
+    <FacilityContext.Provider value={{ facilityId, setFacilityId, selectedAssetId, setSelectedAssetId }}>
       {children}
     </FacilityContext.Provider>
   );

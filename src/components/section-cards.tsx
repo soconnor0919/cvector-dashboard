@@ -57,7 +57,7 @@ export function SectionCards() {
   const onlinePct    = totalAssets > 0 ? (online / totalAssets) * 100 : 100
 
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-3 @[1600px]/main:grid-cols-5 dark:*:data-[slot=card]:bg-card">
+    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Total Assets</CardDescription>
@@ -109,20 +109,6 @@ export function SectionCards() {
           <CardAction>
             <Badge variant="outline" className={cn(!isLoading && alerts > 0 && statusClasses.error)}>
               {isLoading ? <Shimmer className="w-20" /> : alerts > 0 ? "Needs attention" : "All clear"}
-            </Badge>
-          </CardAction>
-        </CardHeader>
-      </Card>
-
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Online Status</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {isLoading ? <Shimmer className="w-16" /> : online.toLocaleString()}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline" className={cn(!isLoading && onlineBadgeClass(onlinePct))}>
-              {isLoading ? <Shimmer className="w-20" /> : `${totalAssets - online} offline`}
             </Badge>
           </CardAction>
         </CardHeader>

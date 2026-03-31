@@ -92,12 +92,21 @@ function SensorTooltip({
  */
 export function ChartAreaInteractive() {
   const isMobile = useIsMobile()
-  const { facilityId } = useFacility()
+  const { facilityId, selectedAssetId, setSelectedAssetId } = useFacility()
   
   // Dashboard state: metric type, time window, and asset filter
   const [metric, setMetric] = React.useState("power")
   const [hours, setHours] = React.useState("24")
   const [filterAssetId, setFilterAssetId] = React.useState("all")
+
+  // Sync context selectedAssetId to local filterAssetId
+  React.useEffect(() => {
+    if (selectedAssetId) {
+      setFilterAssetId(selectedAssetId)
+    } else {
+      setFilterAssetId("all")
+    }
+  }, [selectedAssetId])
 
   // UX: Default to a smaller window on mobile to reduce data density
   React.useEffect(() => {
@@ -113,7 +122,7 @@ export function ChartAreaInteractive() {
     placeholderData: keepPreviousData,
   })
 
-  const { data: assetList = [] } = useQuery<Asset[]>({
+const { data: assetList = [] } = useQuery<Asset[]>({
     queryKey: queryKeys.assets(facilityId),
     queryFn: () => fetch(`/api/assets${facilityId ? `?facilityId=${facilityId}` : ""}`).then(r => r.json()),
   })
@@ -152,16 +161,28 @@ export function ChartAreaInteractive() {
     }))
   }, [visibleAssets, assetList])
 
+  const activeMetric = METRICS.find(m => m.name === metric)!
+
+  const outlierAssets = React.useMemo(() => {
+    const outliers = new Set<number>()
+    for (const r of readings) {
+      if (activeMetric.max && r.avg > activeMetric.max) outliers.add(r.assetId)
+      if (activeMetric.min && r.avg < activeMetric.min) outliers.add(r.assetId)
+    }
+    return outliers
+  }, [readings, activeMetric])
+
   const chartConfig = React.useMemo(() => {
     const config: ChartConfig = {}
     visibleAssets.forEach((asset, i) => {
+      const isOutlier = outlierAssets.has(asset.id)
       config[`a${asset.id}`] = {
         label: asset.name,
-        color: `var(--chart-${(i % 5) + 1})`,
+        color: isOutlier ? "#ef4444" : `var(--chart-${(i % 5) + 1})`,
       }
     })
     return config
-  }, [visibleAssets])
+  }, [visibleAssets, outlierAssets])
 
   const data = React.useMemo(() => {
     const byBucket = new Map<string, Record<string, unknown>>()
@@ -181,8 +202,6 @@ export function ChartAreaInteractive() {
       .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
       .map(([, v]) => v)
   }, [readings])
-
-  const activeMetric = METRICS.find(m => m.name === metric)!
 
   const noDataReason = React.useMemo(() => {
     if (data.length > 0) return null
@@ -211,7 +230,10 @@ export function ChartAreaInteractive() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterAssetId} onValueChange={setFilterAssetId}>
+          <Select 
+            value={filterAssetId} 
+            onValueChange={(v) => setSelectedAssetId(v === "all" ? null : v)}
+          >
             <SelectTrigger className="w-40" aria-label="Filter by asset">
               <SelectValue placeholder="All assets" />
             </SelectTrigger>
@@ -262,10 +284,10 @@ export function ChartAreaInteractive() {
         <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
           <AreaChart data={data}>
             <defs aria-hidden="true">
-              {visibleAssets.map((asset, i) => (
+              {visibleAssets.map((asset) => (
                 <linearGradient key={asset.id} id={`fill-a${asset.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  style={{ stopColor: `var(--color-a${asset.id})`, stopOpacity: 0.3 }} />
-                  <stop offset="95%" style={{ stopColor: `var(--color-a${asset.id})`, stopOpacity: 0 }} />
+                  <stop offset="5%"  style={{ stopColor: chartConfig[`a${asset.id}`]?.color, stopOpacity: 0.3 }} />
+                  <stop offset="95%" style={{ stopColor: chartConfig[`a${asset.id}`]?.color, stopOpacity: 0 }} />
                 </linearGradient>
               ))}
             </defs>
@@ -279,7 +301,6 @@ export function ChartAreaInteractive() {
             {activeMetric.max && (
               <ReferenceArea
                 y1={activeMetric.max}
-                y2={"auto" as any}
                 stroke="none"
                 fill="red"
                 fillOpacity={0.05}
@@ -288,7 +309,6 @@ export function ChartAreaInteractive() {
             )}
             {activeMetric.min && (
               <ReferenceArea
-                y1={0}
                 y2={activeMetric.min}
                 stroke="none"
                 fill="red"
@@ -308,10 +328,12 @@ export function ChartAreaInteractive() {
                 dataKey={`a${asset.id}`}
                 type="monotone"
                 fill={`url(#fill-a${asset.id})`}
-                stroke={`var(--color-a${asset.id})`}
+                stroke={chartConfig[`a${asset.id}`]?.color}
                 strokeWidth={1.5}
-                dot={(props: any) => {
-                  const { cx, cy, value } = props;
+                dot={(props: Record<string, unknown>) => {
+                  const cx = props.cx as number;
+                  const cy = props.cy as number;
+                  const value = props.value as number;
                   if (value > activeMetric.max || value < activeMetric.min) {
                     return <circle key={`${asset.id}-${cx}`} cx={cx} cy={cy} r={3} fill="red" stroke="white" strokeWidth={1} />;
                   }

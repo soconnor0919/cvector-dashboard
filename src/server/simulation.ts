@@ -1,10 +1,10 @@
 import { db } from "./db";
 import { assets, sensorReadings } from "./db/schema";
 import { gte } from "drizzle-orm";
-import { ASSET_METRICS, METRICS } from "./db/metrics";
+import { ASSET_METRICS, METRICS, type MetricName } from "./db/metrics";
 
 let running = false;
-const SENSOR_METRICS = ["temperature", "humidity", "pressure", "flow_rate"];
+const SENSOR_METRICS: MetricName[] = ["temperature", "humidity", "pressure", "flow_rate"];
 
 async function runSimulation() {
   const thirtySecondsAgo = new Date(Date.now() - 30_000);
@@ -20,8 +20,8 @@ async function runSimulation() {
 
   const now = new Date();
   const readings = allAssets.flatMap((asset) => {
-    const metricNames = ASSET_METRICS[asset.type] ?? [SENSOR_METRICS[asset.id % SENSOR_METRICS.length]!];
-    const relevantMetrics = METRICS.filter(m => metricNames.includes(m.name as any));
+    const metricNames: MetricName[] = ASSET_METRICS[asset.type] ?? [SENSOR_METRICS[asset.id % SENSOR_METRICS.length]!];
+    const relevantMetrics = METRICS.filter(m => metricNames.includes(m.name));
 
     return relevantMetrics.map(metric => {
       const variation = (Math.random() - 0.5) * 2 * metric.variance;

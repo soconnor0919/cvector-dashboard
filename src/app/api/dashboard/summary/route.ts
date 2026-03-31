@@ -1,7 +1,7 @@
 import { db } from "@/server/db";
 import { assets, sensorReadings } from "@/server/db/schema";
 import { kickSimulation } from "@/server/simulation";
-import { and, avg, count, desc, eq, gte, sql, sum } from "drizzle-orm";
+import { avg, count, eq, sql, sum } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 // /api/dashboard/summary?facilityId=???
