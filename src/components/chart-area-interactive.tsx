@@ -101,6 +101,14 @@ export function ChartAreaInteractive() {
   // Asset filter is driven directly from context — no local copy needed
   const filterAssetId = selectedAssetId ?? "all"
 
+  // Scroll chart into view when an asset is selected from the sidebar
+  const cardRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    if (selectedAssetId) {
+      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [selectedAssetId])
+
   // UX: Default to a smaller window on mobile to reduce data density
   React.useEffect(() => {
     if (isMobile) setHours("6")
@@ -206,7 +214,7 @@ const { data: assetList = [] } = useQuery<Asset[]>({
   }, [data, raw, allAssets, filterAssetId, metric, facilityId])
 
   return (
-    <Card className="@container/card">
+    <Card ref={cardRef} className="@container/card">
       <CardHeader>
         <CardTitle>Sensor Readings</CardTitle>
         <CardDescription>
@@ -296,7 +304,9 @@ const { data: assetList = [] } = useQuery<Asset[]>({
                 type="monotone"
                 fill="none"
                 stroke={chartConfig[`a${asset.id}`]?.color}
-                strokeWidth={1.5}
+                strokeWidth={filterAssetId === "all" ? 1.5 : 2.5}
+                style={{ cursor: "pointer" }}
+                onClick={() => setSelectedAssetId(selectedAssetId === String(asset.id) ? null : String(asset.id))}
                 dot={(props: Record<string, unknown>) => {
                   const cx = props.cx as number;
                   const cy = props.cy as number;
