@@ -42,9 +42,9 @@ type Reading = {
   assetName: string
   metricName: string
   unit: string
-  avg: number
-  min: number
-  max: number
+  avg: string | number
+  min: string | number
+  max: string | number
 }
 
 type AssetEntry = { id: number; name: string }
@@ -167,8 +167,8 @@ const { data: assetList = [] } = useQuery<Asset[]>({
   const outlierAssets = React.useMemo(() => {
     const outliers = new Set<number>()
     for (const r of readings) {
-      if (activeMetric.max && r.avg > activeMetric.max) outliers.add(r.assetId)
-      if (activeMetric.min && r.avg < activeMetric.min) outliers.add(r.assetId)
+      if (activeMetric.max && Number(r.avg) > activeMetric.max) outliers.add(r.assetId)
+      if (activeMetric.min && Number(r.avg) < activeMetric.min) outliers.add(r.assetId)
     }
     return outliers
   }, [readings, activeMetric])
@@ -195,9 +195,9 @@ const { data: assetList = [] } = useQuery<Asset[]>({
           }),
         })
       }
-      byBucket.get(r.bucket)![`a${r.assetId}`]        = r.avg
-      byBucket.get(r.bucket)![`a${r.assetId}_min`]    = r.min
-      byBucket.get(r.bucket)![`a${r.assetId}_max`]    = r.max
+      byBucket.get(r.bucket)![`a${r.assetId}`]        = Number(r.avg)
+      byBucket.get(r.bucket)![`a${r.assetId}_min`]    = Number(r.min)
+      byBucket.get(r.bucket)![`a${r.assetId}_max`]    = Number(r.max)
     }
     return Array.from(byBucket.entries())
       .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())

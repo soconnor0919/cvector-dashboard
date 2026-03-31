@@ -78,9 +78,9 @@ type Reading = {
   assetName: string
   metricName: string
   unit: string
-  avg: number
-  min: number
-  max: number
+  avg: string | number
+  min: string | number
+  max: string | number
 }
 
 /**
@@ -109,7 +109,7 @@ function AssetCharts({ assetId, assetType }: { assetId: number; assetType: strin
           .sort((a, b) => new Date(a.bucket).getTime() - new Date(b.bucket).getTime())
           .map(r => ({
             time: new Date(r.bucket).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            value: r.avg,
+            value: Number(r.avg),
           }))
 
         if (chartData.length === 0) return null
