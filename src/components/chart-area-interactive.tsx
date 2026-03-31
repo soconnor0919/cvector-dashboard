@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, ReferenceArea, ReferenceLine, XAxis, YAxis, Tooltip } from "recharts"
+import { Area, AreaChart, CartesianGrid, ReferenceLine, XAxis, YAxis, Tooltip } from "recharts"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useFacility } from "@/components/providers/facility-provider"
@@ -283,14 +283,6 @@ const { data: assetList = [] } = useQuery<Asset[]>({
         ) : (
         <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
           <AreaChart data={data}>
-            <defs aria-hidden="true">
-              {visibleAssets.map((asset) => (
-                <linearGradient key={asset.id} id={`fill-a${asset.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  style={{ stopColor: chartConfig[`a${asset.id}`]?.color, stopOpacity: 0.3 }} />
-                  <stop offset="95%" style={{ stopColor: chartConfig[`a${asset.id}`]?.color, stopOpacity: 0 }} />
-                </linearGradient>
-              ))}
-            </defs>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="time" tickLine={false} axisLine={false} tickMargin={8} minTickGap={32} />
             <YAxis tickLine={false} axisLine={false} tickMargin={8} width={50} />
@@ -299,35 +291,17 @@ const { data: assetList = [] } = useQuery<Asset[]>({
               content={<SensorTooltip unit={activeMetric.unit} />}
             />
             {activeMetric.max && (
-              <ReferenceArea
-                y1={activeMetric.max}
-                stroke="none"
-                fill="red"
-                fillOpacity={0.05}
-                label={{ position: 'insideTopLeft', value: 'High Warning', fill: 'red', fontSize: 10, opacity: 0.5 }}
-              />
+              <ReferenceLine y={activeMetric.max} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} label={{ position: 'insideTopLeft', value: 'High', fill: 'red', fontSize: 10, opacity: 0.5 }} />
             )}
             {activeMetric.min && (
-              <ReferenceArea
-                y2={activeMetric.min}
-                stroke="none"
-                fill="red"
-                fillOpacity={0.05}
-                label={{ position: 'insideBottomLeft', value: 'Low Warning', fill: 'red', fontSize: 10, opacity: 0.5 }}
-              />
-            )}
-            {activeMetric.max && (
-              <ReferenceLine y={activeMetric.max} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />
-            )}
-            {activeMetric.min && (
-              <ReferenceLine y={activeMetric.min} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />
+              <ReferenceLine y={activeMetric.min} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} label={{ position: 'insideBottomLeft', value: 'Low', fill: 'red', fontSize: 10, opacity: 0.5 }} />
             )}
             {visibleAssets.map((asset) => (
               <Area
                 key={asset.id}
                 dataKey={`a${asset.id}`}
                 type="monotone"
-                fill={`url(#fill-a${asset.id})`}
+                fill="none"
                 stroke={chartConfig[`a${asset.id}`]?.color}
                 strokeWidth={1.5}
                 dot={(props: Record<string, unknown>) => {

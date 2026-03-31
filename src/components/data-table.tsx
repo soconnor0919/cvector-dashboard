@@ -62,7 +62,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceArea,
   ReferenceLine,
   XAxis,
   YAxis,
@@ -136,16 +135,13 @@ function AssetCharts({ assetId, assetType }: { assetId: number; assetType: strin
                       return null
                     }}
                   />
-                  {m.max && <ReferenceArea y1={m.max} fill="red" fillOpacity={0.1} />}
-                  {m.min && <ReferenceArea y2={m.min} fill="red" fillOpacity={0.1} />}
                   {m.max && <ReferenceLine y={m.max} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />}
                   {m.min && <ReferenceLine y={m.min} stroke="red" strokeDasharray="3 3" strokeOpacity={0.5} />}
                   <Area
                     type="monotone"
                     dataKey="value"
                     stroke="var(--primary)"
-                    fill="var(--primary)"
-                    fillOpacity={0.1}
+                    fill="none"
                     strokeWidth={2}
                     dot={(props: Record<string, unknown>) => {
                       const cx = props.cx as number;
